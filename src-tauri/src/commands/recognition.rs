@@ -12,12 +12,15 @@ use tauri::{command, Emitter, Window};
 pub async fn recognize_invoices(
     file_paths: Vec<String>,
     days: u32,
+    existing_records: Vec<InvoiceRecord>,
     window: Window,
 ) -> Result<RecognitionResult, AppError> {
     let rules = RulesConfig::load().map_err(AppError::RulesLoad)?;
     let total = file_paths.len();
 
-    let mut records: Vec<InvoiceRecord> = Vec::new();
+    // ponytail: 增量识别——已识别的记录由前端回传，后端只解析本次新增的 file_paths，
+    // 再在新旧记录合并后统一重算 totals/preview，避免重复解析老 PDF。
+    let mut records: Vec<InvoiceRecord> = existing_records;
 
     for (i, path) in file_paths.iter().enumerate() {
         let _ = window.emit(
@@ -58,6 +61,13 @@ pub async fn recognize_invoices(
         // 3. 逐页识别
         for (page_num, page_text) in &pages {
             let qr_codes = qr_map.get(page_num).cloned().unwrap_or_default();
+
+            // 输出该页全文，便于调试识别规则与字段提取
+            tracing::info!(
+                "===== {filename} 第 {page_num} 页全文（{} 字符）=====\n{}\n===== 第 {page_num} 页全文结束 =====",
+                page_text.chars().count(),
+                page_text
+            );
 
             let (invoice_type, from_qr) =
                 recognition_service::detect_invoice_type(page_text, &qr_codes, &rules);
@@ -148,6 +158,8 @@ pub async fn recognize_invoices(
                 record.kind,
                 record.amount
             );
+            // 增量推送：识别出一条就发给前端，无需等全部跑完
+            let _ = window.emit("recognition://record", &record);
             records.push(record);
         }
     }

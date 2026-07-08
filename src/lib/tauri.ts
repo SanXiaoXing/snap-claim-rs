@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
-import type { RecognitionResult } from '../types'
+import type { InvoiceRecord, RecognitionResult } from '../types'
 
 // ── 文件选择 ──
 
@@ -18,11 +18,12 @@ export async function pickPdfs(): Promise<string[]> {
 export async function recognizeInvoices(
   filePaths: string[],
   days: number,
+  existingRecords: InvoiceRecord[],
   onProgress?: (cur: number, total: number) => void,
-  onQrCode?: (items: { page: number; urls: string[]; filename: string }[]) => void
+  onRecord?: (record: InvoiceRecord) => void
 ): Promise<RecognitionResult> {
   let unlistenProgress: UnlistenFn | undefined
-  let unlistenQr: UnlistenFn | undefined
+  let unlistenRecord: UnlistenFn | undefined
 
   if (onProgress) {
     unlistenProgress = await listen<{ current: number; total: number }>(
@@ -30,19 +31,19 @@ export async function recognizeInvoices(
       (e) => onProgress(e.payload.current, e.payload.total)
     )
   }
-  if (onQrCode) {
-    unlistenQr = await listen<{ page: number; urls: string[]; filename: string }[]>(
-      'recognition://qrcode',
-      (e) => onQrCode(e.payload)
+  if (onRecord) {
+    unlistenRecord = await listen<InvoiceRecord>(
+      'recognition://record',
+      (e) => onRecord(e.payload)
     )
   }
   try {
-    return await invoke<RecognitionResult>('recognize_invoices', { filePaths, days })
+    return await invoke<RecognitionResult>('recognize_invoices', { filePaths, days, existingRecords })
   } catch (e) {
     const msg = typeof e === 'string' ? e : JSON.stringify(e)
     throw new Error(msg)
   } finally {
     unlistenProgress?.()
-    unlistenQr?.()
+    unlistenRecord?.()
   }
 }

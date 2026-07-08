@@ -1,9 +1,11 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import './styles/globals.css'
-import { Header } from './components/Header'
 import { LeftPanel, RightPanel } from './components/Panels'
 import { DragMask } from './components/DragMask'
+import { DateRangeModal } from './components/DateRangeModal'
 import { pickPdfs, recognizeInvoices } from './lib/tauri'
+import { listen } from '@tauri-apps/api/event'
+import { getCurrentWebview } from '@tauri-apps/api/webview'
 import type { InvoiceRecord, Totals, PreviewRow } from './types'
 
 const EMPTY_TOTALS: Totals = {
@@ -12,14 +14,23 @@ const EMPTY_TOTALS: Totals = {
 }
 
 function App() {
-  const [currentTheme, setCurrentTheme] = useState('清爽办公风')
   const [files, setFiles] = useState<string[]>([])
   const [isRecognizing, setIsRecognizing] = useState(false)
   const [progress, setProgress] = useState(0)
   const [progressTotal, setProgressTotal] = useState(0)
   const [status, setStatus] = useState('等待上传文件...')
-  const [qrResults, setQrResults] = useState<{ page: number; urls: string[]; filename: string }[]>([])
-  const [days, setDays] = useState(1)
+  // ponytail: 出差日期通过日历弹窗选择，days 由日期差派生（+1 含首尾）
+  const today = new Date().toISOString().slice(0, 10)
+  const [startDate, setStartDate] = useState(today)
+  const [endDate, setEndDate] = useState(today)
+  const [showDatePicker, setShowDatePicker] = useState(false)
+  const days = useMemo(() => {
+    if (!startDate || !endDate) return 0
+    const s = new Date(startDate + 'T00:00:00').getTime()
+    const e = new Date(endDate + 'T00:00:00').getTime()
+    if (isNaN(s) || isNaN(e) || e < s) return 0
+    return Math.floor((e - s) / 86400000) + 1
+  }, [startDate, endDate])
   const [records, setRecords] = useState<InvoiceRecord[]>([])
   const [totals, setTotals] = useState<Totals>(EMPTY_TOTALS)
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([])
@@ -43,20 +54,31 @@ function App() {
       return
     }
 
+    // ponytail: 增量识别——只把「未识别过」的文件发给后端，已识别的复用现有 records，
+    // 避免每次新增 PDF 都重跑全部文件。days 变化时后端用 existing records 重算汇总。
+    const recognizedPaths = new Set(records.map((r) => r.fullPath))
+    const newFiles = files.filter((f) => !recognizedPaths.has(f))
+
     setIsRecognizing(true)
     setProgress(0)
-    setProgressTotal(files.length)
-    setStatus('正在识别...')
-    setQrResults([])
+    setProgressTotal(newFiles.length)
+    setStatus(newFiles.length > 0 ? `正在识别 ${newFiles.length} 个新文件...` : '正在重新计算汇总...')
 
     try {
-      const result = await recognizeInvoices(files, days, (cur, total) => {
-        setProgress(cur)
-        setProgressTotal(total)
-      }, (items) => {
-        setQrResults((prev) => [...prev, ...items])
-      })
+      const result = await recognizeInvoices(
+        newFiles,
+        days,
+        records,
+        (cur, total) => {
+          setProgress(cur)
+          setProgressTotal(total)
+        },
+        (record) => {
+          setRecords((prev) => [...prev, record])
+        }
+      )
 
+      // 全量对齐（existing + new），totals/previewRows 最后一次性填充
       setRecords(result.records)
       setTotals(result.totals)
       setPreviewRows(result.previewRows)
@@ -66,7 +88,7 @@ function App() {
     } finally {
       setIsRecognizing(false)
     }
-  }, [files, days])
+  }, [files, days, records])
 
   // 删除选中
   const handleDeleteSelected = useCallback((indices: Set<number>) => {
@@ -81,7 +103,6 @@ function App() {
     setRecords([])
     setTotals(EMPTY_TOTALS)
     setPreviewRows([])
-    setQrResults([])
     setStatus('等待上传文件...')
   }, [])
 
@@ -97,47 +118,75 @@ function App() {
 
   // 主题切换
   const handleThemeChange = useCallback((theme: string) => {
-    setCurrentTheme(theme)
     document.documentElement.setAttribute('data-theme', theme)
   }, [])
 
-  // 拖拽事件
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setShowDragMask(true)
+  // ponytail: 用 Tauri 原生 drag-drop 事件——HTML5 ondrop 在 Tauri 拦截下不触发，
+  // .path 也非标准；原生事件直接给 paths 且无 DOM 冒泡，顺带消除 mask 闪烁。
+  // 一次性订阅，用 filesRef 读最新 files 长度（同 recordsRef 模式）。
+  const filesRef = useRef(files)
+  filesRef.current = files
+  useEffect(() => {
+    const unlisten = getCurrentWebview().onDragDropEvent((e) => {
+      const p = e.payload
+      if (p.type === 'enter' || p.type === 'over') {
+        setShowDragMask(true)
+      } else if (p.type === 'leave') {
+        setShowDragMask(false)
+      } else if (p.type === 'drop') {
+        setShowDragMask(false)
+        const pdfs = p.paths.filter((f) => f.toLowerCase().endsWith('.pdf'))
+        if (pdfs.length === 0) return
+        const fresh = pdfs.filter((f) => !filesRef.current.includes(f))
+        if (fresh.length === 0) return
+        setFiles((prev) => [...prev, ...fresh])
+        setStatus(`已添加 ${filesRef.current.length + fresh.length} 个文件（拖拽）`)
+      }
+    })
+    return () => { unlisten.then((fn) => fn()) }
   }, [])
 
-  const handleDragLeave = useCallback(() => {
-    setShowDragMask(false)
+  // 原生菜单事件分发：后端 emit id，前端按 id 路由到现有 handler
+  const handlers = useRef({ handleAddFiles, handleMergePdf, handleExportReport, handleClear, handleThemeChange, setStatus })
+  handlers.current = { handleAddFiles, handleMergePdf, handleExportReport, handleClear, handleThemeChange, setStatus }
+  useEffect(() => {
+    const unlisten = listen<string>('menu://event', (e) => {
+      const id = e.payload
+      const h = handlers.current
+      if (id.startsWith('theme_')) h.handleThemeChange(id.slice(6))
+      else if (id === 'file_add') h.handleAddFiles()
+      else if (id === 'file_merge') h.handleMergePdf()
+      else if (id === 'file_export') h.handleExportReport()
+      else if (id === 'file_clear') h.handleClear()
+    })
+    return () => { unlisten.then((fn) => fn()) }
   }, [])
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setShowDragMask(false)
-    // ponytail: 拖拽文件暂用 Tauri drag-drop 事件，后续接入
-    const paths = Array.from(e.dataTransfer.files)
-      .map((f) => (f as any).path || f.name)
-      .filter((p) => p.toLowerCase().endsWith('.pdf'))
-    if (paths.length > 0) {
-      setFiles((prev) => [...prev, ...paths.filter((f) => !prev.includes(f))])
-      setStatus(`已添加 ${files.length + paths.length} 个文件（拖拽）`)
-    }
-  }, [files.length])
+  // ponytail: days 变化时用现有 records 重算汇总/预览——后端空 file_paths 走重算路径，不重跑 PDF。
+  // debounce 250ms 防止连按数字键时多次 invoke 互相覆盖（如输入 "12" 会先算 days=1 再算 days=12）。
+  const recordsRef = useRef(records)
+  recordsRef.current = records
+  useEffect(() => {
+    if (isRecognizing || recordsRef.current.length === 0) return
+    const t = window.setTimeout(async () => {
+      try {
+        const result = await recognizeInvoices([], days, recordsRef.current)
+        setTotals(result.totals)
+        setPreviewRows(result.previewRows)
+      } catch (e) {
+        setStatus(`重算失败: ${String(e)}`)
+      }
+    }, 250)
+    return () => clearTimeout(t)
+  }, [days, isRecognizing])
 
   return (
     <div
-      className="min-h-screen flex flex-col"
-      style={{ backgroundColor: 'var(--bg)', color: 'var(--fg)' }}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
+      className="min-h-screen flex flex-col relative"
+      style={{ color: 'var(--fg)' }}
     >
-      <Header
-        currentTheme={currentTheme}
-        onThemeChange={handleThemeChange}
-        onMergePdf={handleMergePdf}
-        onExportReport={handleExportReport}
-      />
+      {/* macOS 风格背景层：为毛玻璃卡片/工具栏提供色彩底层 */}
+      <div className="fixed inset-0 -z-10 pointer-events-none mac-mesh-bg" />
 
       <main className="flex-1 flex overflow-hidden">
         <LeftPanel
@@ -150,15 +199,28 @@ function App() {
           progress={progress}
           progressTotal={progressTotal}
           status={status}
-          qrResults={qrResults}
           days={days}
-          onDaysChange={setDays}
+          startDate={startDate}
+          endDate={endDate}
+          onOpenDatePicker={() => setShowDatePicker(true)}
           totals={totals}
         />
         <RightPanel records={records} previewRows={previewRows} />
       </main>
 
       <DragMask isVisible={showDragMask} />
+
+      <DateRangeModal
+        open={showDatePicker}
+        startDate={startDate}
+        endDate={endDate}
+        onConfirm={(s, e) => {
+          setStartDate(s)
+          setEndDate(e)
+          setShowDatePicker(false)
+        }}
+        onCancel={() => setShowDatePicker(false)}
+      />
     </div>
   )
 }

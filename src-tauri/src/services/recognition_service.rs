@@ -70,11 +70,16 @@ pub fn extract_fields(
             if let Ok(re) = Regex::new(pattern) {
                 if let Some(caps) = re.captures(text) {
                     if field_name == "departure_time" && caps.len() == 5 {
-                        // 特殊处理：2024年01月15日 08:30开
+                        // 特殊处理：2024年01月15日 08:30开 → 2024-01-15 08:30
                         let val = format!(
                             "{}-{}-{} {}",
                             &caps[1], &caps[2], &caps[3], &caps[4]
                         );
+                        result.insert(field_name.clone(), json!(val));
+                    } else if field_name == "departure_time" && caps.len() == 4 {
+                        // 3 组格式：2026年05月25日 → 2026-05-25（新式铁路电子客票，
+                        // 日期与时间常被 pdfium 拆到不同行，这里只取日期部分）
+                        let val = format!("{}-{}-{}", &caps[1], &caps[2], &caps[3]);
                         result.insert(field_name.clone(), json!(val));
                     } else if let Some(m) = caps.get(1) {
                         let val = m.as_str().trim().to_string();
@@ -97,12 +102,16 @@ pub fn extract_fields(
         }
     }
 
-    // 火车票特殊处理：按行解析（出发站=车次行前一行，到达站=车次行后一行）
+    // 火车票特殊处理：提取出发站/到达站/车次
+    // 同时兼容老式报销凭证（站名/车次/站名三行）与新式铁路电子客票
+    // （站名车次同行 / 两站名同行 + 独立车次行）
     if invoice_type == "train" {
-        if let Some((depart, train_num, arrival)) = extract_train_stations_by_line(text) {
+        if let Some((depart, train_num, arrival)) = extract_train_stations_and_number(text) {
             result.insert("departure_station".into(), json!(depart));
             result.insert("arrival_station".into(), json!(arrival));
-            result.insert("train_number".into(), json!(train_num));
+            if !train_num.is_empty() {
+                result.insert("train_number".into(), json!(train_num));
+            }
         }
     }
 
@@ -175,19 +184,75 @@ fn extract_amount_from_qr(qr_codes: &[String], invoice_type: &str) -> Option<f64
     None
 }
 
-/// 按行解析火车票的出发站/车次/到达站
+/// 提取火车票的出发站/车次/到达站
 ///
-/// pdfium 提取的票面文本中，站名和车次通常是独立的一行：
-/// ```
-/// 北京西站
-/// G323
-/// 西安北站
-/// ```
+/// 兼容 pdfium 抽取出的三种文本排列：
 ///
-/// 返回 `(departure_station, train_number, arrival_station)`
-fn extract_train_stations_by_line(text: &str) -> Option<(String, String, String)> {
-    // 只匹配独立的车次行（整行就是一个 G/D/C 字母+数字的编号）
-    let train_re = Regex::new(r"^[A-Z]\d{1,5}$").ok()?;
+/// 1. **新式铁路电子客票 — 站名车次同行**（如第4页）：
+///    ```text
+///    西安北站 G368 北京西站
+///    ```
+///    用正则 `站\s+车次\s+站` 一次捕获三段。
+///
+/// 2. **新式铁路电子客票 — 两站名同行 + 独立车次行**（如第2页）：
+///    ```text
+///    G323
+///    ...
+///    北京西站 西安北站
+///    ```
+///    用正则 `站\s+站` 捕获两站，再在全文找独立车次行。
+///
+/// 3. **老式报销凭证 — 站名/车次/站名三行**：
+///    ```text
+///    北京西站
+///    G323
+///    西安北站
+///    ```
+///    逐行找 `^[A-Z]\d+$` 的车次行，取前后各一行。
+///
+/// 返回 `(departure_station, train_number, arrival_station)`，车次可能为空字符串。
+fn extract_train_stations_and_number(text: &str) -> Option<(String, String, String)> {
+    // 站名片段：2~8 个汉字 + "站" 字
+    const STATION: &str = r"[\u4e00-\u9fa5]{2,8}站";
+    // 车次：单字母(G/D/C/K/T/Z) + 1~5 位数字
+    const TRAIN: &str = r"[A-Z]\d{1,5}";
+
+    // 策略1：站名 车次 站名 同行 —— "西安北站 G368 北京西站"
+    let re_inline = Regex::new(&format!("({STATION})\\s+({TRAIN})\\s+({STATION})")).ok()?;
+    if let Some(caps) = re_inline.captures(text) {
+        let d = caps[1].to_string();
+        let t = caps[2].to_string();
+        let a = caps[3].to_string();
+        tracing::info!("[train] 策略1(同行) 出发={d}, 车次={t}, 到达={a}");
+        return Some((d, t, a));
+    }
+
+    // 策略2：两站名同行 —— "北京西站 西安北站"，车次另找
+    let re_two = Regex::new(&format!("({STATION})\\s+({STATION})")).ok()?;
+    if let Some(caps) = re_two.captures(text) {
+        let d = caps[1].to_string();
+        let a = caps[2].to_string();
+        // 排除"购买方名称:XX站段公司"这类——要求两段都是纯站名、行内无公司/发票等关键词
+        let matched = caps[0].to_string();
+        if !looks_like_non_station(&matched) {
+            // 在全文找独立车次行（如 "G323"）
+            let train_re = Regex::new(r"(?m)^\s*([A-Z]\d{1,5})\s*$").ok()?;
+            let train = train_re
+                .captures(text)
+                .map(|c| c[1].to_string())
+                .unwrap_or_default();
+            tracing::info!("[train] 策略2(两站名) 出发={d}, 车次={train}, 到达={a}");
+            return Some((d, train, a));
+        }
+    }
+
+    // 策略3：老式 —— 站名/车次/站名 三行
+    extract_train_stations_legacy(text)
+}
+
+/// 老式火车票报销凭证：站名/车次/站名 三行解析
+fn extract_train_stations_legacy(text: &str) -> Option<(String, String, String)> {
+    let train_re = Regex::new(r"(?m)^\s*([A-Z]\d{1,5})\s*$").ok()?;
 
     let lines: Vec<&str> = text
         .lines()
@@ -196,16 +261,18 @@ fn extract_train_stations_by_line(text: &str) -> Option<(String, String, String)
         .collect();
 
     for (i, line) in lines.iter().enumerate() {
-        if !train_re.is_match(line) {
-            continue;
-        }
-
-        let train_number = line.to_string();
+        let train_number = match train_re.captures(line) {
+            Some(c) => c[1].to_string(),
+            None => continue,
+        };
 
         // 出发站：车次行的前一行，需要包含"站"字
         let departure = if i > 0 {
             let prev = lines[i - 1];
-            if prev.contains('站') && prev.chars().count() <= 12 {
+            if prev.contains('站')
+                && prev.chars().count() <= 12
+                && !looks_like_non_station(prev)
+            {
                 Some(prev.to_string())
             } else {
                 None
@@ -217,7 +284,10 @@ fn extract_train_stations_by_line(text: &str) -> Option<(String, String, String)
         // 到达站：车次行的后一行，需要包含"站"字
         let arrival = if i + 1 < lines.len() {
             let next = lines[i + 1];
-            if next.contains('站') && next.chars().count() <= 12 {
+            if next.contains('站')
+                && next.chars().count() <= 12
+                && !looks_like_non_station(next)
+            {
                 Some(next.to_string())
             } else {
                 None
@@ -227,12 +297,26 @@ fn extract_train_stations_by_line(text: &str) -> Option<(String, String, String)
         };
 
         if let (Some(d), Some(a)) = (departure, arrival) {
-            tracing::info!("[train] 出发={d}, 车次={train_number}, 到达={a}");
+            tracing::info!("[train] 策略3(三行) 出发={d}, 车次={train_number}, 到达={a}");
             return Some((d, train_number, a));
         }
     }
 
     None
+}
+
+/// 判断某段文本是否不像火车站名
+///
+/// 真实站名是地理名称（如"北京西站"、"上海虹桥站"），不会包含
+/// 公司/单位/发票等关键词。命中这些关键词则视为非站点文本（如
+/// "购买方名称:XX站段公司"），避免被误识别为出发/到达站。
+fn looks_like_non_station(s: &str) -> bool {
+    [
+        "公司", "集团", "单位", "发票", "报销", "购买", "销售", "开票", "车次", "日期", "票号",
+        "增值税", "税务", "信用代码",
+    ]
+    .iter()
+    .any(|k| s.contains(k))
 }
 
 /// 从文本中提取金额

@@ -1,57 +1,249 @@
 @import "tailwindcss";
+@import "react-day-picker/style.css";
 
-/* Python 版 5 套主题色定义 */
+/* 5 套主题色：与 docs/design/index.html 严格对齐 */
 :root {
   /* 清爽办公风（默认） */
   --bg: #f8fafc;
-  --fg: #1e293b;
-  --accent: #3b82f6;
-  --accent-light: #60a5fa;
+  --fg: #0f172a;
+  --fg-muted: #64748b;
+  --accent: #10b981;
+  --accent-light: #34d399;
   --card: #ffffff;
   --border: #e2e8f0;
-  --success: #047857;
+  --success: #10b981;
   --warning: #b45309;
   --danger: #dc2626;
 }
 
-[data-theme="高对比效率风"] {
+[data-theme="High Contrast"] {
   --bg: #ffffff;
   --fg: #000000;
-  --accent: #2563eb;
-  --accent-light: #3b82f6;
-  --card: #f5f5f5;
-  --border: #d1d5db;
-}
-
-[data-theme="深色专业风"] {
-  --bg: #1e293b;
-  --fg: #f1f5f9;
-  --accent: #22c55e;
-  --accent-light: #4ade80;
-  --card: #334155;
-  --border: #475569;
-}
-
-[data-theme="柔和极简风"] {
-  --bg: #faf7f5;
-  --fg: #4a5568;
-  --accent: #8b5cf6;
-  --accent-light: #a78bfa;
+  --fg-muted: #525252;
+  --accent: #000000;
+  --accent-light: #525252;
   --card: #ffffff;
-  --border: #e5e7eb;
+  --border: #000000;
+  --accent-strong: #f97316;
 }
 
-[data-theme="企业可信风"] {
-  --bg: #f3f4f6;
-  --fg: #1f2937;
+[data-theme="Dark Pro"] {
+  --bg: #0f172a;
+  --fg: #f1f5f9;
+  --fg-muted: #94a3b8;
   --accent: #0ea5e9;
   --accent-light: #38bdf8;
+  --card: #1e293b;
+  --border: #334155;
+}
+
+[data-theme="Soft Minimal"] {
+  --bg: #faf9f6;
+  --fg: #292524;
+  --fg-muted: #78716c;
+  --accent: #84cc16;
+  --accent-light: #a3e635;
   --card: #ffffff;
-  --border: #d1d5db;
+  --border: #e7e5e4;
+}
+
+[data-theme="Corporate Trust"] {
+  --bg: #ffffff;
+  --fg: #1e293b;
+  --fg-muted: #475569;
+  --accent: #1e40af;
+  --accent-light: #3b82f6;
+  --card: #ffffff;
+  --border: #cbd5e1;
 }
 
 /* 全局样式 */
 body {
   background-color: var(--bg);
   color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== macOS 风格背景：为毛玻璃效果提供色彩底层 ===== */
+.mac-mesh-bg {
+  background:
+    radial-gradient(circle at 18% 8%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 42%),
+    radial-gradient(circle at 82% 88%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 48%),
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--accent-light) 4%, transparent), transparent 60%),
+    var(--bg);
+}
+
+/* ===== macOS 工具栏：顶部 header 毛玻璃 ===== */
+.mac-toolbar {
+  background: color-mix(in srgb, var(--card) 72%, transparent);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid var(--border);
+}
+
+/* ===== macOS 卡片：半透明毛玻璃 + 内高光 ===== */
+.mac-card {
+  background: color-mix(in srgb, var(--card) 72%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 1px 2px color-mix(in srgb, var(--fg) 5%, transparent);
+}
+
+/* ===== macOS 输入框 ===== */
+.mac-input {
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--fg);
+  font-size: 0.8125rem;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.mac-input::placeholder { color: var(--fg-muted); }
+.mac-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+/* ===== macOS 按钮：主 / 次 / 危险 三级 ===== */
+.btn-primary {
+  padding: 6px 14px;
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 1px 2px rgba(0, 0, 0, 0.08);
+  transition: transform 0.1s ease, opacity 0.15s ease, background 0.15s ease;
+}
+.btn-primary:hover { background: var(--accent-light); }
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* 次按钮：macOS 工具栏式毛玻璃 */
+.btn-secondary {
+  padding: 6px 14px;
+  background: color-mix(in srgb, var(--card) 60%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+.btn-secondary:hover { background: color-mix(in srgb, var(--accent) 12%, var(--card)); }
+.btn-secondary:active { transform: scale(0.98); }
+
+/* 危险按钮 */
+.btn-danger {
+  padding: 6px 14px;
+  background: var(--danger);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 1px 2px rgba(0, 0, 0, 0.08);
+  transition: transform 0.1s ease, opacity 0.15s ease;
+}
+.btn-danger:hover { opacity: 0.9; }
+.btn-danger:active { transform: scale(0.98); }
+
+/* ===== 数据表格：清晰外边框 + 内部网格线 + 表头底色 + 行 hover
+   外边框由包裹容器（rounded + border + overflow-hidden）提供，
+   表格自身 border-style:hidden 避免与外层边框重叠产生双边框。 */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-style: hidden;
+}
+.data-table th,
+.data-table td {
+  border: 1px solid var(--border);
+}
+.data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: color-mix(in srgb, var(--border) 30%, var(--card));
+  color: var(--fg-muted);
+  font-weight: 600;
+}
+.data-table tbody tr:hover {
+  background: color-mix(in srgb, var(--accent) 10%, var(--card));
+}
+
+/* ===== macOS 文件列表项 ===== */
+.mac-list-item {
+  background: color-mix(in srgb, var(--card) 50%, transparent);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+}
+.mac-list-item:hover {
+  background: color-mix(in srgb, var(--accent) 8%, var(--card));
+}
+.mac-list-item.selected {
+  background: color-mix(in srgb, var(--accent) 16%, var(--card));
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* ===== 降低透明度偏好：禁用毛玻璃，回退到实色 ===== */
+@media (prefers-reduced-transparency: reduce) {
+  .mac-toolbar,
+  .mac-card,
+  .btn-secondary,
+  .mac-input,
+  .mac-list-item {
+    background: var(--card);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* ===== 拖拽遮罩：全屏毛玻璃 + 虚线落区 + 图标浮动 ===== */
+.drag-mask-backdrop {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  animation: drag-mask-fade 0.15s ease-out;
+}
+.drag-mask-frame {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.drag-mask-icon {
+  animation: drag-mask-bounce 1.4s ease-in-out infinite;
+}
+@keyframes drag-mask-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes drag-mask-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .drag-mask-backdrop { animation: none; }
+  .drag-mask-icon { animation: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .drag-mask-backdrop {
+    background: color-mix(in srgb, var(--accent) 18%, var(--bg));
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 }

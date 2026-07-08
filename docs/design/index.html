@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice-OCR 界面风格预设</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            line-height: 1.6;
+            color: #0f172a;
+        }
+
+        .page-header {
+            padding: 80px 24px;
+            text-align: center;
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .page-header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            letter-spacing: -0.02em;
+        }
+
+        .page-header p {
+            font-size: 1.125rem;
+            color: #64748b;
+            max-width: 640px;
+            margin: 0 auto;
+        }
+
+        .theme-section {
+            padding: 80px 24px;
+        }
+
+        .theme-container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .theme-header {
+            margin-bottom: 40px;
+        }
+
+        .theme-header h2 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .theme-header .design-read {
+            font-size: 1rem;
+            opacity: 0.7;
+            margin-bottom: 20px;
+        }
+
+        .theme-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .meta-tag {
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 40px;
+        }
+
+        .color-swatch {
+            border-radius: 8px;
+            padding: 16px;
+            min-height: 90px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            border: 1px solid transparent;
+        }
+
+        .color-swatch .name {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+
+        .color-swatch .hex {
+            font-family: "SF Mono", "JetBrains Mono", "Fira Code", monospace;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .demo-card {
+            border-radius: 12px;
+            padding: 32px;
+            border: 1px solid transparent;
+        }
+
+        .demo-card h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+        }
+
+        .demo-toolbar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .demo-input {
+            padding: 10px 14px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            min-width: 200px;
+            outline: none;
+        }
+
+        .demo-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s ease, opacity 0.15s ease;
+        }
+
+        .demo-btn:hover {
+            opacity: 0.9;
+        }
+
+        .demo-btn:active {
+            transform: scale(0.98);
+        }
+
+        .demo-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .demo-table th,
+        .demo-table td {
+            padding: 12px 16px;
+            text-align: left;
+        }
+
+        .demo-table th {
+            font-weight: 600;
+        }
+
+        .demo-table td.amount {
+            text-align: right;
+            font-family: "SF Mono", "JetBrains Mono", "Fira Code", monospace;
+        }
+
+        /* Theme 1: Clean Office */
+        .theme-clean-office {
+            background: #f8fafc;
+            color: #0f172a;
+        }
+
+        .theme-clean-office .meta-tag {
+            background: #e2e8f0;
+            color: #334155;
+        }
+
+        .theme-clean-office .color-swatch {
+            border-color: #e2e8f0;
+        }
+
+        .theme-clean-office .demo-card {
+            background: #ffffff;
+            border-color: #e2e8f0;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+        }
+
+        .theme-clean-office .demo-input {
+            background: #ffffff;
+            border-color: #cbd5e1;
+            color: #0f172a;
+        }
+
+        .theme-clean-office .demo-input::placeholder {
+            color: #94a3b8;
+        }
+
+        .theme-clean-office .demo-btn {
+            background: #10b981;
+            color: #ffffff;
+        }
+
+        .theme-clean-office .demo-table th {
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        .theme-clean-office .demo-table td {
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .theme-clean-office .demo-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Theme 2: Dark Pro */
+        .theme-dark-pro {
+            background: #0f172a;
+            color: #f1f5f9;
+        }
+
+        .theme-dark-pro .meta-tag {
+            background: #1e293b;
+            color: #94a3b8;
+            border: 1px solid #334155;
+        }
+
+        .theme-dark-pro .color-swatch {
+            border-color: #334155;
+        }
+
+        .theme-dark-pro .demo-card {
+            background: #1e293b;
+            border-color: #334155;
+        }
+
+        .theme-dark-pro .demo-input {
+            background: #0f172a;
+            border-color: #334155;
+            color: #f1f5f9;
+        }
+
+        .theme-dark-pro .demo-input::placeholder {
+            color: #64748b;
+        }
+
+        .theme-dark-pro .demo-btn {
+            background: #0ea5e9;
+            color: #ffffff;
+        }
+
+        .theme-dark-pro .demo-table th {
+            background: #1e293b;
+            color: #94a3b8;
+            border-bottom: 1px solid #334155;
+        }
+
+        .theme-dark-pro .demo-table td {
+            border-bottom: 1px solid #334155;
+        }
+
+        .theme-dark-pro .demo-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Theme 3: High Contrast */
+        .theme-high-contrast {
+            background: #ffffff;
+            color: #000000;
+        }
+
+        .theme-high-contrast .meta-tag {
+            background: #000000;
+            color: #ffffff;
+        }
+
+        .theme-high-contrast .color-swatch {
+            border-color: #000000;
+        }
+
+        .theme-high-contrast .demo-card {
+            background: #ffffff;
+            border: 1px solid #000000;
+            border-radius: 0;
+        }
+
+        .theme-high-contrast .demo-input {
+            background: #ffffff;
+            border: 1px solid #000000;
+            border-radius: 0;
+            color: #000000;
+        }
+
+        .theme-high-contrast .demo-input::placeholder {
+            color: #525252;
+        }
+
+        .theme-high-contrast .demo-btn {
+            background: #000000;
+            color: #ffffff;
+            border-radius: 0;
+        }
+
+        .theme-high-contrast .demo-table {
+            border: 1px solid #000000;
+            border-radius: 0;
+        }
+
+        .theme-high-contrast .demo-table th {
+            background: #000000;
+            color: #ffffff;
+        }
+
+        .theme-high-contrast .demo-table td {
+            border-bottom: 1px solid #000000;
+        }
+
+        .theme-high-contrast .demo-table tr:nth-child(even) td {
+            background: #f5f5f5;
+        }
+
+        .theme-high-contrast .demo-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Theme 4: Soft Minimal */
+        .theme-soft-minimal {
+            background: #faf9f6;
+            color: #292524;
+        }
+
+        .theme-soft-minimal .meta-tag {
+            background: #e7e5e4;
+            color: #57534e;
+        }
+
+        .theme-soft-minimal .color-swatch {
+            border-color: #e7e5e4;
+        }
+
+        .theme-soft-minimal .demo-card {
+            background: #ffffff;
+            border-color: #e7e5e4;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(41, 37, 36, 0.04);
+        }
+
+        .theme-soft-minimal .demo-input {
+            background: #ffffff;
+            border-color: #d6d3d1;
+            border-radius: 8px;
+            color: #292524;
+        }
+
+        .theme-soft-minimal .demo-input::placeholder {
+            color: #a8a29e;
+        }
+
+        .theme-soft-minimal .demo-btn {
+            background: #84cc16;
+            color: #ffffff;
+            border-radius: 8px;
+        }
+
+        .theme-soft-minimal .demo-table th {
+            background: #f5f5f4;
+            color: #57534e;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .theme-soft-minimal .demo-table td {
+            border-bottom: 1px solid #f5f5f4;
+        }
+
+        .theme-soft-minimal .demo-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Theme 5: Corporate Trust */
+        .theme-corporate {
+            background: #ffffff;
+            color: #1e293b;
+        }
+
+        .theme-corporate .meta-tag {
+            background: #f1f5f9;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+        }
+
+        .theme-corporate .color-swatch {
+            border-color: #cbd5e1;
+        }
+
+        .theme-corporate .demo-card {
+            background: #ffffff;
+            border-color: #cbd5e1;
+            border-radius: 6px;
+        }
+
+        .theme-corporate .demo-input {
+            background: #ffffff;
+            border-color: #94a3b8;
+            border-radius: 4px;
+            color: #1e293b;
+        }
+
+        .theme-corporate .demo-input::placeholder {
+            color: #94a3b8;
+        }
+
+        .theme-corporate .demo-btn {
+            background: #1e40af;
+            color: #ffffff;
+            border-radius: 4px;
+        }
+
+        .theme-corporate .demo-table {
+            border: 1px solid #e2e8f0;
+        }
+
+        .theme-corporate .demo-table th {
+            background: #f8fafc;
+            color: #475569;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .theme-corporate .demo-table td {
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .theme-corporate .demo-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        @media (max-width: 768px) {
+            .page-header h1 {
+                font-size: 1.875rem;
+            }
+
+            .demo-toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .demo-input {
+                min-width: auto;
+                width: 100%;
+            }
+
+            .demo-btn {
+                width: 100%;
+            }
+
+            .demo-table {
+                font-size: 0.8125rem;
+            }
+
+            .demo-table th,
+            .demo-table td {
+                padding: 10px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="page-header">
+        <h1>Invoice-OCR 界面风格预设</h1>
+        <p>5 套为发票识别与报销单生成工具设计的界面方向。每套预设包含色彩、字体、圆角、密度与适用场景，可直接迁移到 PySide6 的 QSS 中。</p>
+    </header>
+
+    <!-- Theme 1: Clean Office -->
+    <section class="theme-section theme-clean-office">
+        <div class="theme-container">
+            <div class="theme-header">
+                <h2>01. 清爽办公风</h2>
+                <p class="design-read">报销识别工具，日常办公使用，浅色背景为主，低认知负担。</p>
+                <div class="theme-meta">
+                    <span class="meta-tag">Variance 3</span>
+                    <span class="meta-tag">Motion 3</span>
+                    <span class="meta-tag">Density 5</span>
+                    <span class="meta-tag">圆角 6-8px</span>
+                    <span class="meta-tag">系统默认字体</span>
+                </div>
+            </div>
+
+            <div class="color-palette">
+                <div class="color-swatch" style="background: #f8fafc; color: #0f172a;">
+                    <span class="name">背景</span>
+                    <span class="hex">#F8FAFC</span>
+                </div>
+                <div class="color-swatch" style="background: #ffffff; color: #0f172a;">
+                    <span class="name">卡片</span>
+                    <span class="hex">#FFFFFF</span>
+                </div>
+                <div class="color-swatch" style="background: #e2e8f0; color: #0f172a;">
+                    <span class="name">边框</span>
+                    <span class="hex">#E2E8F0</span>
+                </div>
+                <div class="color-swatch" style="background: #0f172a; color: #f8fafc;">
+                    <span class="name">主文字</span>
+                    <span class="hex">#0F172A</span>
+                </div>
+                <div class="color-swatch" style="background: #64748b; color: #ffffff;">
+                    <span class="name">次要文字</span>
+                    <span class="hex">#64748B</span>
+                </div>
+                <div class="color-swatch" style="background: #10b981; color: #ffffff;">
+                    <span class="name">主按钮</span>
+                    <span class="hex">#10B981</span>
+                </div>
+            </div>
+
+            <div class="demo-card">
+                <h3>模拟界面</h3>
+                <div class="demo-toolbar">
+                    <input type="text" class="demo-input" placeholder="选择 PDF 文件...">
+                    <button class="demo-btn">开始识别</button>
+                </div>
+                <table class="demo-table">
+                    <thead>
+                        <tr>
+                            <th>类型</th>
+                            <th>日期</th>
+                            <th>路线</th>
+                            <th class="amount">金额</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>高铁票</td>
+                            <td>2026-06-23</td>
+                            <td>北京西 - 西安北</td>
+                            <td class="amount">577.50</td>
+                        </tr>
+                        <tr>
+                            <td>酒店</td>
+                            <td>2026-06-23</td>
+                            <td>西安高新锦业路轻居酒店</td>
+                            <td class="amount">3,261.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Theme 2: Dark Pro -->
+    <section class="theme-section theme-dark-pro">
+        <div class="theme-container">
+            <div class="theme-header">
+                <h2>02. 深色专业风</h2>
+                <p class="design-read">长时间处理发票数据，深色降低眼部疲劳，适合夜间或低光环境。</p>
+                <div class="theme-meta">
+                    <span class="meta-tag">Variance 3</span>
+                    <span class="meta-tag">Motion 3</span>
+                    <span class="meta-tag">Density 5</span>
+                    <span class="meta-tag">圆角 6-8px</span>
+                    <span class="meta-tag">系统默认字体</span>
+                </div>
+            </div>
+
+            <div class="color-palette">
+                <div class="color-swatch" style="background: #0f172a; color: #f1f5f9;">
+                    <span class="name">背景</span>
+                    <span class="hex">#0F172A</span>
+                </div>
+                <div class="color-swatch" style="background: #1e293b; color: #f1f5f9;">
+                    <span class="name">卡片</span>
+                    <span class="hex">#1E293B</span>
+                </div>
+                <div class="color-swatch" style="background: #334155; color: #f1f5f9;">
+                    <span class="name">边框</span>
+                    <span class="hex">#334155</span>
+                </div>
+                <div class="color-swatch" style="background: #f1f5f9; color: #0f172a;">
+                    <span class="name">主文字</span>
+                    <span class="hex">#F1F5F9</span>
+                </div>
+                <div class="color-swatch" style="background: #94a3b8; color: #0f172a;">
+                    <span class="name">次要文字</span>
+                    <span class="hex">#94A3B8</span>
+                </div>
+                <div class="color-swatch" style="background: #0ea5e9; color: #ffffff;">
+                    <span class="name">主按钮</span>
+                    <span class="hex">#0EA5E9</span>
+                </div>
+            </div>
+
+            <div class="demo-card">
+                <h3>模拟界面</h3>
+                <div class="demo-toolbar">
+                    <input type="text" class="demo-input" placeholder="选择 PDF 文件...">
+                    <button class="demo-btn">开始识别</button>
+                </div>
+                <table class="demo-table">
+                    <thead>
+                        <tr>
+                            <th>类型</th>
+                            <th>日期</th>
+                            <th>路线</th>
+                            <th class="amount">金额</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>高铁票</td>
+                            <td>2026-06-23</td>
+                            <td>北京西 - 西安北</td>
+                            <td class="amount">577.50</td>
+                        </tr>
+                        <tr>
+                            <td>酒店</td>
+                            <td>2026-06-23</td>
+                            <td>西安高新锦业路轻居酒店</td>
+                            <td class="amount">3,261.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Theme 3: High Contrast -->
+    <section class="theme-section theme-high-contrast">
+        <div class="theme-container">
+            <div class="theme-header">
+                <h2>03. 高对比效率风</h2>
+                <p class="design-read">数据密集型操作，用户需要快速扫读金额和状态，无装饰。</p>
+                <div class="theme-meta">
+                    <span class="meta-tag">Variance 2</span>
+                    <span class="meta-tag">Motion 2</span>
+                    <span class="meta-tag">Density 7</span>
+                    <span class="meta-tag">圆角 0px</span>
+                    <span class="meta-tag">系统默认字体</span>
+                </div>
+            </div>
+
+            <div class="color-palette">
+                <div class="color-swatch" style="background: #ffffff; color: #000000;">
+                    <span class="name">背景</span>
+                    <span class="hex">#FFFFFF</span>
+                </div>
+                <div class="color-swatch" style="background: #ffffff; color: #000000; border-color: #000000;">
+                    <span class="name">卡片</span>
+                    <span class="hex">#FFFFFF</span>
+                </div>
+                <div class="color-swatch" style="background: #000000; color: #ffffff;">
+                    <span class="name">边框</span>
+                    <span class="hex">#000000</span>
+                </div>
+                <div class="color-swatch" style="background: #000000; color: #ffffff;">
+                    <span class="name">主文字</span>
+                    <span class="hex">#000000</span>
+                </div>
+                <div class="color-swatch" style="background: #525252; color: #ffffff;">
+                    <span class="name">次要文字</span>
+                    <span class="hex">#525252</span>
+                </div>
+                <div class="color-swatch" style="background: #000000; color: #ffffff;">
+                    <span class="name">主按钮</span>
+                    <span class="hex">#000000</span>
+                </div>
+                <div class="color-swatch" style="background: #f97316; color: #ffffff;">
+                    <span class="name">强调色</span>
+                    <span class="hex">#F97316</span>
+                </div>
+            </div>
+
+            <div class="demo-card">
+                <h3>模拟界面</h3>
+                <div class="demo-toolbar">
+                    <input type="text" class="demo-input" placeholder="选择 PDF 文件...">
+                    <button class="demo-btn">开始识别</button>
+                </div>
+                <table class="demo-table">
+                    <thead>
+                        <tr>
+                            <th>类型</th>
+                            <th>日期</th>
+                            <th>路线</th>
+                            <th class="amount">金额</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>高铁票</td>
+                            <td>2026-06-23</td>
+                            <td>北京西 - 西安北</td>
+                            <td class="amount">577.50</td>
+                        </tr>
+                        <tr>
+                            <td>酒店</td>
+                            <td>2026-06-23</td>
+                            <td>西安高新锦业路轻居酒店</td>
+                            <td class="amount">3,261.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Theme 4: Soft Minimal -->
+    <section class="theme-section theme-soft-minimal">
+        <div class="theme-container">
+            <div class="theme-header">
+                <h2>04. 柔和极简风</h2>
+                <p class="design-read">减轻报销流程的枯燥感，界面更亲和，呼吸感强。</p>
+                <div class="theme-meta">
+                    <span class="meta-tag">Variance 4</span>
+                    <span class="meta-tag">Motion 4</span>
+                    <span class="meta-tag">Density 4</span>
+                    <span class="meta-tag">圆角 8-16px</span>
+                    <span class="meta-tag">系统默认字体</span>
+                </div>
+            </div>
+
+            <div class="color-palette">
+                <div class="color-swatch" style="background: #faf9f6; color: #292524;">
+                    <span class="name">背景</span>
+                    <span class="hex">#FAF9F6</span>
+                </div>
+                <div class="color-swatch" style="background: #ffffff; color: #292524;">
+                    <span class="name">卡片</span>
+                    <span class="hex">#FFFFFF</span>
+                </div>
+                <div class="color-swatch" style="background: #e7e5e4; color: #292524;">
+                    <span class="name">边框</span>
+                    <span class="hex">#E7E5E4</span>
+                </div>
+                <div class="color-swatch" style="background: #292524; color: #faf9f6;">
+                    <span class="name">主文字</span>
+                    <span class="hex">#292524</span>
+                </div>
+                <div class="color-swatch" style="background: #78716c; color: #ffffff;">
+                    <span class="name">次要文字</span>
+                    <span class="hex">#78716C</span>
+                </div>
+                <div class="color-swatch" style="background: #84cc16; color: #ffffff;">
+                    <span class="name">主按钮</span>
+                    <span class="hex">#84CC16</span>
+                </div>
+            </div>
+
+            <div class="demo-card">
+                <h3>模拟界面</h3>
+                <div class="demo-toolbar">
+                    <input type="text" class="demo-input" placeholder="选择 PDF 文件...">
+                    <button class="demo-btn">开始识别</button>
+                </div>
+                <table class="demo-table">
+                    <thead>
+                        <tr>
+                            <th>类型</th>
+                            <th>日期</th>
+                            <th>路线</th>
+                            <th class="amount">金额</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>高铁票</td>
+                            <td>2026-06-23</td>
+                            <td>北京西 - 西安北</td>
+                            <td class="amount">577.50</td>
+                        </tr>
+                        <tr>
+                            <td>酒店</td>
+                            <td>2026-06-23</td>
+                            <td>西安高新锦业路轻居酒店</td>
+                            <td class="amount">3,261.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Theme 5: Corporate Trust -->
+    <section class="theme-section theme-corporate">
+        <div class="theme-container">
+            <div class="theme-header">
+                <h2>05. 企业可信风</h2>
+                <p class="design-read">面向公司财务流程，传达正式、可靠、可审计的感觉。</p>
+                <div class="theme-meta">
+                    <span class="meta-tag">Variance 2</span>
+                    <span class="meta-tag">Motion 2</span>
+                    <span class="meta-tag">Density 5</span>
+                    <span class="meta-tag">圆角 4-6px</span>
+                    <span class="meta-tag">系统默认字体</span>
+                </div>
+            </div>
+
+            <div class="color-palette">
+                <div class="color-swatch" style="background: #ffffff; color: #1e293b;">
+                    <span class="name">背景</span>
+                    <span class="hex">#FFFFFF</span>
+                </div>
+                <div class="color-swatch" style="background: #ffffff; color: #1e293b; border-color: #cbd5e1;">
+                    <span class="name">卡片</span>
+                    <span class="hex">#FFFFFF</span>
+                </div>
+                <div class="color-swatch" style="background: #cbd5e1; color: #1e293b;">
+                    <span class="name">边框</span>
+                    <span class="hex">#CBD5E1</span>
+                </div>
+                <div class="color-swatch" style="background: #1e293b; color: #ffffff;">
+                    <span class="name">主文字</span>
+                    <span class="hex">#1E293B</span>
+                </div>
+                <div class="color-swatch" style="background: #475569; color: #ffffff;">
+                    <span class="name">次要文字</span>
+                    <span class="hex">#475569</span>
+                </div>
+                <div class="color-swatch" style="background: #1e40af; color: #ffffff;">
+                    <span class="name">主按钮</span>
+                    <span class="hex">#1E40AF</span>
+                </div>
+            </div>
+
+            <div class="demo-card">
+                <h3>模拟界面</h3>
+                <div class="demo-toolbar">
+                    <input type="text" class="demo-input" placeholder="选择 PDF 文件...">
+                    <button class="demo-btn">开始识别</button>
+                </div>
+                <table class="demo-table">
+                    <thead>
+                        <tr>
+                            <th>类型</th>
+                            <th>日期</th>
+                            <th>路线</th>
+                            <th class="amount">金额</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>高铁票</td>
+                            <td>2026-06-23</td>
+                            <td>北京西 - 西安北</td>
+                            <td class="amount">577.50</td>
+                        </tr>
+                        <tr>
+                            <td>酒店</td>
+                            <td>2026-06-23</td>
+                            <td>西安高新锦业路轻居酒店</td>
+                            <td class="amount">3,261.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+</body>
+</html>
