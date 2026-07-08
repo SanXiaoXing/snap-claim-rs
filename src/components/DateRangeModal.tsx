@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import { gsap } from "gsap"
+import { useGSAP } from "@gsap/react"
 import { type DateRange } from "react-day-picker"
 import { zhCN } from "react-day-picker/locale"
 import { X } from "lucide-react"
@@ -13,6 +15,8 @@ import {
   CardHeader,
   CardTitle,
 } from "./ui/card"
+
+gsap.registerPlugin(useGSAP)
 
 function toISO(d: Date | undefined): string {
   if (!d) return ""
@@ -47,6 +51,72 @@ export function DateRangeModal({
     return f && t ? { from: f, to: t } : f ? { from: f } : undefined
   })
 
+  // 延迟卸载：open=false 后保留 DOM 至退场动画结束（240ms），再真正移除
+  const [mounted, setMounted] = React.useState(open)
+  React.useEffect(() => {
+    if (open) {
+      setMounted(true)
+    } else if (mounted) {
+      const t = setTimeout(() => setMounted(false), 240)
+      return () => clearTimeout(t)
+    }
+  }, [open, mounted])
+
+  // GSAP 进出场：遮罩淡入淡出 + 卡片 back.out 弹性入场 / expo.out 收缩退场
+  // 动机：状态切换 - 清晰表达"某事打开/关闭"，back.out 比 CSS 更有就位感
+  const overlayRef = React.useRef<HTMLDivElement>(null)
+  const cardRef = React.useRef<HTMLDivElement>(null)
+  useGSAP(
+    () => {
+      // 未挂载时 refs 为 null，跳过（GSAP 对 null 目标会告警）
+      if (!overlayRef.current || !cardRef.current) return
+      const mm = gsap.matchMedia()
+      mm.add(
+        {
+          normal: "(prefers-reduced-motion: no-preference)",
+          reduce: "(prefers-reduced-motion: reduce)",
+        },
+        (ctx) => {
+          const { reduce } = ctx.conditions!
+          if (open) {
+            // 进场
+            gsap.fromTo(
+              overlayRef.current,
+              { autoAlpha: 0 },
+              { autoAlpha: 1, duration: reduce ? 0 : 0.2, ease: "power2.out" },
+            )
+            gsap.fromTo(
+              cardRef.current,
+              { autoAlpha: 0, y: 16, scale: 0.96 },
+              {
+                autoAlpha: 1,
+                y: 0,
+                scale: 1,
+                duration: reduce ? 0 : 0.4,
+                ease: "back.out(1.5)",
+              },
+            )
+          } else {
+            // 退场
+            gsap.to(overlayRef.current, {
+              autoAlpha: 0,
+              duration: reduce ? 0 : 0.2,
+              ease: "expo.in",
+            })
+            gsap.to(cardRef.current, {
+              autoAlpha: 0,
+              y: 8,
+              scale: 0.98,
+              duration: reduce ? 0 : 0.22,
+              ease: "expo.in",
+            })
+          }
+        },
+      )
+    },
+    { dependencies: [open], scope: overlayRef },
+  )
+
   // ponytail: 每次打开同步外部值，避免上次未确认的选择残留
   React.useEffect(() => {
     if (!open) return
@@ -65,7 +135,7 @@ export function DateRangeModal({
     return () => window.removeEventListener("keydown", onKey)
   }, [open, onCancel])
 
-  if (!open) return null
+  if (!mounted) return null
 
   const days =
     range?.from && range?.to
@@ -80,6 +150,7 @@ export function DateRangeModal({
 
   return (
     <div
+      ref={overlayRef}
       className="fixed inset-0 z-[90] flex items-center justify-center"
       role="dialog"
       aria-modal="true"
@@ -90,7 +161,10 @@ export function DateRangeModal({
         onClick={onCancel}
       />
 
-      <Card className="relative w-[680px] max-w-[92vw] mac-card">
+      <Card
+        ref={cardRef}
+        className="relative w-[680px] max-w-[92vw] mac-card"
+      >
         {/* 关闭按钮 */}
         <button
           onClick={onCancel}

@@ -57,6 +57,19 @@
   --border: #cbd5e1;
 }
 
+/* ===== 动画 token（主题无关，独立 :root） =====
+   仅用 transform/opacity（GPU 友好），easing 沿用 expo 曲线。
+   MOTION_INTENSITY: 5 - 工具类克制档，所有动画带功能动机。 */
+:root {
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-expo: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 140ms;
+  --dur-fast: 200ms;
+  --dur-base: 280ms;
+  --dur-modal: 320ms;
+}
+
 /* 全局样式 */
 body {
   background-color: var(--bg);
@@ -245,5 +258,65 @@ body {
     background: color-mix(in srgb, var(--accent) 18%, var(--bg));
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
+  }
+}
+
+/* ============================================================
+   动画系统（MOTION_INTENSITY: 5 - 功能性克制档）
+   - GSAP 接管：mount 入场 / 模态框进出场 / 表格行 stagger / 总额 count-up / 磁吸按钮
+   - CSS 保留：文件项入场 / 状态文本淡入 / 进度条 shimmer（简单或无限循环，CSS 更轻）
+   每个动画都有明确动机：挂载/状态切换/反馈/层级
+   ============================================================ */
+
+/* 列表项入场（反馈 - 确认用户添加/识别动作）
+   div 列表项用上浮。 */
+.row-enter {
+  animation: row-enter var(--dur-base) var(--ease-out-expo);
+}
+@keyframes row-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 状态文本淡入：key 随内容变化触发重挂（状态切换） */
+.status-fade {
+  animation: status-fade var(--dur-fast) var(--ease-out-expo);
+}
+@keyframes status-fade {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 进度条填充：宽度过渡平滑 + 活跃期 shimmer（反馈 - 工作中）
+   shimmer 仅在进度条可见时运行（条件渲染保证）。 */
+.progress-bar-fill {
+  height: 100%;
+  background-color: var(--accent);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, #ffffff 40%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  transition: width var(--dur-base) var(--ease-out-expo);
+  animation: progress-shimmer 1.6s var(--ease-in-out) infinite;
+}
+@keyframes progress-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ===== reduced-motion：CSS 动画降级为瞬时（GSAP 侧由 gsap.matchMedia 守卫） ===== */
+@media (prefers-reduced-motion: reduce) {
+  .row-enter,
+  .status-fade,
+  .progress-bar-fill,
+  .drag-mask-icon {
+    animation: none !important;
+  }
+  .progress-bar-fill {
+    transition: none;
   }
 }

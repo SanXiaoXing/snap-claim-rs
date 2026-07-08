@@ -4,6 +4,7 @@ import { LeftPanel, RightPanel } from './components/Panels'
 import { DragMask } from './components/DragMask'
 import { DateRangeModal } from './components/DateRangeModal'
 import { pickPdfs, recognizeInvoices, mergePdfs, pickSavePath, exportExcel } from './lib/tauri'
+import { useGsapMount } from './lib/gsap-hooks'
 import { listen } from '@tauri-apps/api/event'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import type { InvoiceRecord, Totals, PreviewRow } from './types'
@@ -35,6 +36,9 @@ function App() {
   const [totals, setTotals] = useState<Totals>(EMPTY_TOTALS)
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([])
   const [showDragMask, setShowDragMask] = useState(false)
+  // GSAP mount timeline 作用域：覆盖 main 内的卡片 + 右侧表格区
+  const mainRef = useRef<HTMLElement>(null)
+  useGsapMount(mainRef, '.gsap-enter', 0.08)
 
   // 添加文件（Tauri 原生文件选择对话框）
   const handleAddFiles = useCallback(async () => {
@@ -218,7 +222,7 @@ function App() {
       {/* macOS 风格背景层：为毛玻璃卡片/工具栏提供色彩底层 */}
       <div className="fixed inset-0 -z-10 pointer-events-none mac-mesh-bg" />
 
-      <main className="flex-1 flex overflow-hidden">
+      <main ref={mainRef} className="flex-1 flex overflow-hidden">
         <LeftPanel
           files={files}
           onAddFiles={handleAddFiles}

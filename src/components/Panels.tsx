@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Calendar as CalendarIcon } from 'lucide-react'
 import type { InvoiceRecord, Totals, PreviewRow } from '../types'
+import { useGsapMagnetic, useGsapCountUp, useGsapRowStagger } from '../lib/gsap-hooks'
 
 const TYPE_MAP = {
   train: '高铁票',
@@ -46,11 +47,16 @@ export function LeftPanel({
   totals: Totals
 }) {
   const [selectedFiles, setSelectedFiles] = useState<Set<number>>(new Set())
+  // 磁吸主按钮 + 总额滚动（反馈：触觉化 + 数值就绪确认）
+  const recognizeBtnRef = useRef<HTMLButtonElement>(null)
+  const totalAmountRef = useRef<HTMLSpanElement>(null)
+  useGsapMagnetic(recognizeBtnRef, 0.2)
+  useGsapCountUp(totalAmountRef, totals.total, 2)
 
   return (
     <div className="w-[340px] flex flex-col gap-4 p-4">
       {/* 文件上传区 */}
-      <section className="mac-card p-4">
+      <section className="mac-card p-4 gsap-enter">
         <h2 className="font-bold mb-2">上传 PDF 文件</h2>
         <p className="text-sm text-[var(--fg-muted)] mb-4">
           选择包含高铁票、酒店或用车确认单的 PDF 文件
@@ -67,7 +73,7 @@ export function LeftPanel({
           {files.map((file, idx) => (
             <div
               key={idx}
-              className={`mac-list-item flex items-center gap-2 px-2 py-1 ${selectedFiles.has(idx) ? 'selected' : ''}`}
+              className={`mac-list-item row-enter flex items-center gap-2 px-2 py-1 ${selectedFiles.has(idx) ? 'selected' : ''}`}
               onClick={() => {
                 const newSet = new Set(selectedFiles)
                 if (newSet.has(idx)) newSet.delete(idx)
@@ -107,8 +113,9 @@ export function LeftPanel({
       </section>
 
       {/* 识别区 */}
-      <section className="mac-card p-4">
+      <section className="mac-card p-4 gsap-enter">
         <button
+          ref={recognizeBtnRef}
           className="btn-primary w-full"
           onClick={onStartRecognition}
           disabled={isRecognizing}
@@ -120,17 +127,17 @@ export function LeftPanel({
         {isRecognizing && (
           <div className="mt-2 h-2 bg-[var(--border)] rounded overflow-hidden">
             <div
-              className="h-full bg-[var(--accent)] transition-all"
+              className="progress-bar-fill rounded"
               style={{ width: `${progressTotal > 0 ? (progress / progressTotal) * 100 : 0}%` }}
             />
           </div>
         )}
 
-        <p className="mt-2 text-sm text-center text-[var(--fg-muted)]">{status}</p>
+        <p key={status} className="mt-2 text-sm text-center text-[var(--fg-muted)] status-fade">{status}</p>
       </section>
 
       {/* 出差设置 */}
-      <section className="mac-card p-4">
+      <section className="mac-card p-4 gsap-enter">
         <h2 className="font-bold mb-2">出差设置</h2>
         <button
           className="btn-secondary w-full flex items-center justify-between"
@@ -149,11 +156,11 @@ export function LeftPanel({
       </section>
 
       {/* 费用汇总 */}
-      <section className="mac-card p-4">
+      <section className="mac-card p-4 gsap-enter">
         <h2 className="font-bold mb-2">费用汇总</h2>
         <div className="text-center">
           <div className="text-2xl font-bold text-[var(--accent)]">
-            ¥ {totals.total.toFixed(2)}
+            ¥ <span ref={totalAmountRef}>{totals.total.toFixed(2)}</span>
           </div>
           <div className="text-sm text-[var(--fg-muted)] mt-1">{totals.chinese}</div>
 
@@ -180,10 +187,16 @@ export function RightPanel({
   records: InvoiceRecord[]
   previewRows: PreviewRow[]
 }) {
+  // 表格行 stagger 入场（反馈：新增记录逐行淡入，引导阅读顺序）
+  const recordsTbodyRef = useRef<HTMLTableSectionElement>(null)
+  const previewTbodyRef = useRef<HTMLTableSectionElement>(null)
+  useGsapRowStagger(recordsTbodyRef, 'tr', records.length)
+  useGsapRowStagger(previewTbodyRef, 'tr', previewRows.length)
+
   return (
     <div className="flex-1 flex flex-col gap-4 p-4">
       {/* 识别结果表格：各列设最大宽度，总宽随内容自适应 + 固定高度 + 不换行 */}
-      <section className="mac-card p-4">
+      <section className="mac-card p-4 gsap-enter">
         <h2 className="font-bold mb-2">识别结果</h2>
         <div className="max-h-[480px] overflow-auto rounded-lg border border-[var(--border)]">
           <table className="data-table">
@@ -196,7 +209,7 @@ export function RightPanel({
                 <th className="max-w-[120px] px-2 py-1 text-left whitespace-nowrap overflow-hidden text-ellipsis">状态</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={recordsTbodyRef}>
               {records.map((r, idx) => (
                 <tr key={idx}>
                   <td className="max-w-[80px] px-2 py-1 whitespace-nowrap overflow-hidden text-ellipsis">{TYPE_MAP[r.type]}</td>
@@ -224,7 +237,7 @@ export function RightPanel({
       </section>
 
       {/* 报销单预览表格：各列设最大宽度，总宽随内容自适应 + 不换行 */}
-      <section className="mac-card p-4">
+      <section className="mac-card p-4 gsap-enter">
         <h2 className="font-bold mb-2">报销单预览</h2>
         <div className="rounded-lg border border-[var(--border)] overflow-hidden">
           <table className="data-table">
@@ -241,7 +254,7 @@ export function RightPanel({
                 <th className="max-w-[120px] px-2 py-1 text-right whitespace-nowrap">合计</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={previewTbodyRef}>
               {previewRows.map((row, idx) => (
                 <tr key={idx}>
                   {row.cells.map((cell, colIdx) => (

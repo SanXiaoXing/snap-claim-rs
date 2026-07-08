@@ -67,7 +67,7 @@ function Calendar({
           "bg-[color-mix(in_srgb,var(--accent)_18%,transparent)] text-[var(--fg)]",
         ),
         outside:
-          "day-outside text-[var(--fg-muted)] aria-selected:text-[var(--fg-muted)]/50",
+          "day-outside text-[var(--fg-muted)] opacity-40 aria-selected:opacity-100",
         disabled: "text-[var(--fg-muted)] opacity-50",
         range_middle:
           "aria-selected:bg-[color-mix(in_srgb,var(--accent)_15%,transparent)] aria-selected:text-[var(--fg)]",
