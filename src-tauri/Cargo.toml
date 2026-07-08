@@ -1,0 +1,30 @@
+[package]
+name = "snap-claim"
+version = "0.1.0"
+description = "自动识别电子发票PDF、出行确认单，生成费用报销单"
+authors = ["SanXiaoXing"]
+edition = "2021"
+
+[lib]
+name = "snap_claim_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-store = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+regex = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+pdfium-render = "0.8"
+image = { version = "0.25", default-features = false, features = ["png"] }
+rxing = "0.5"
