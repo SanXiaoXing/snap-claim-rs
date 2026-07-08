@@ -62,12 +62,12 @@ pub async fn recognize_invoices(
         for (page_num, page_text) in &pages {
             let qr_codes = qr_map.get(page_num).cloned().unwrap_or_default();
 
-            // 输出该页全文，便于调试识别规则与字段提取
-            tracing::info!(
-                "===== {filename} 第 {page_num} 页全文（{} 字符）=====\n{}\n===== 第 {page_num} 页全文结束 =====",
-                page_text.chars().count(),
-                page_text
-            );
+            // // 输出该页全文，便于调试识别规则与字段提取
+            // tracing::info!(
+            //     "===== {filename} 第 {page_num} 页全文（{} 字符）=====\n{}\n===== 第 {page_num} 页全文结束 =====",
+            //     page_text.chars().count(),
+            //     page_text
+            // );
 
             let (invoice_type, from_qr) =
                 recognition_service::detect_invoice_type(page_text, &qr_codes, &rules);

@@ -15,6 +15,31 @@ fn init_pdfium() -> Result<Pdfium, AppError> {
         .map_err(|e| AppError::PdfParse(format!("无法加载 pdfium: {e}")))
 }
 
+/// 合并多个 PDF 到单个输出文件，按入参顺序拼接所有页面
+pub fn merge_pdfs(paths: &[String], output: &str) -> Result<(), AppError> {
+    if paths.is_empty() {
+        return Err(AppError::Io("未选择文件".into()));
+    }
+    let pdfium = init_pdfium()?;
+    let mut merged = pdfium
+        .create_new_pdf()
+        .map_err(|e| AppError::PdfParse(format!("无法创建空文档: {e}")))?;
+    for path in paths {
+        let doc = pdfium
+            .load_pdf_from_file(Path::new(path), None)
+            .map_err(|e| AppError::PdfParse(format!("无法打开 {path}: {e}")))?;
+        merged
+            .pages_mut()
+            .append(&doc)
+            .map_err(|e| AppError::PdfParse(format!("合并 {path} 失败: {e}")))?;
+    }
+    let bytes = merged
+        .save_to_bytes()
+        .map_err(|e| AppError::PdfParse(format!("保存失败: {e}")))?;
+    std::fs::write(output, bytes)?;
+    Ok(())
+}
+
 /// 从 PDF 文件中按页提取文本
 pub fn extract_text_by_page(path: &str) -> Result<Vec<(u32, String)>, AppError> {
     let path = Path::new(path);

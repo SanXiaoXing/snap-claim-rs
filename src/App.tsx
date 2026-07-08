@@ -3,7 +3,7 @@ import './styles/globals.css'
 import { LeftPanel, RightPanel } from './components/Panels'
 import { DragMask } from './components/DragMask'
 import { DateRangeModal } from './components/DateRangeModal'
-import { pickPdfs, recognizeInvoices } from './lib/tauri'
+import { pickPdfs, recognizeInvoices, mergePdfs, pickSavePath, exportExcel } from './lib/tauri'
 import { listen } from '@tauri-apps/api/event'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import type { InvoiceRecord, Totals, PreviewRow } from './types'
@@ -106,15 +106,45 @@ function App() {
     setStatus('等待上传文件...')
   }, [])
 
-  // 合并 PDF（暂未实现）
-  const handleMergePdf = useCallback(() => {
-    setStatus('合并 PDF 功能即将上线')
-  }, [])
+  // 合并 PDF：默认文件名取出差日期区间 YYYYMMDD-YYYYMMDD.pdf，缺日期回落 merged.pdf
+  const handleMergePdf = useCallback(async () => {
+    if (files.length === 0) {
+      setStatus('请先添加 PDF 文件')
+      return
+    }
+    const name = startDate && endDate
+      ? `${startDate.replace(/-/g, '')}-${endDate.replace(/-/g, '')}.pdf`
+      : 'merged.pdf'
+    const output = await pickSavePath(name, 'pdf')
+    if (!output) return
+    setStatus(`正在合并 ${files.length} 个文件...`)
+    try {
+      await mergePdfs(files, output)
+      setStatus(`已合并 ${files.length} 个文件到 ${output}`)
+    } catch (e) {
+      setStatus(`合并失败: ${String(e)}`)
+    }
+  }, [files, startDate, endDate])
 
-  // 导出报销单（暂未实现）
-  const handleExportReport = useCallback(() => {
-    setStatus('导出报销单功能即将上线')
-  }, [])
+  // 导出报销单：previewRows 直接发给后端写 .xlsx，文件名与合并 PDF 同规则（出差日期区间）
+  const handleExportReport = useCallback(async () => {
+    if (previewRows.length === 0) {
+      setStatus('暂无可导出的报销单数据，请先识别')
+      return
+    }
+    const name = startDate && endDate
+      ? `${startDate.replace(/-/g, '')}-${endDate.replace(/-/g, '')}.xlsx`
+      : '报销单.xlsx'
+    const output = await pickSavePath(name, 'xlsx')
+    if (!output) return
+    setStatus('正在导出报销单...')
+    try {
+      await exportExcel(previewRows, output)
+      setStatus(`已导出到 ${output}`)
+    } catch (e) {
+      setStatus(`导出失败: ${String(e)}`)
+    }
+  }, [previewRows, startDate, endDate])
 
   // 主题切换
   const handleThemeChange = useCallback((theme: string) => {

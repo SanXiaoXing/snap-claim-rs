@@ -22,6 +22,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             commands::recognition::recognize_invoices,
+            commands::pdf::merge_pdfs,
+            commands::excel::export_excel,
         ])
         .setup(|app| {
             // ponytail: 原生菜单栏——自定义项 emit id 给前端分发，原生子项(quit/about)自处理
@@ -52,7 +54,7 @@ pub fn run() {
                 "导出",
                 true,
                 &[
-                    &MenuItem::with_id(app, "file_merge", "合并 PDF", true, None::<&str>)?,
+                    &MenuItem::with_id(app, "file_merge", "合并 PDF", true, Some("CmdOrCtrl+M"))?,
                     &MenuItem::with_id(app, "file_export", "导出报销单", true, Some("CmdOrCtrl+E"))?,
                 ],
             )?;

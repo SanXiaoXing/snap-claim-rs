@@ -23,3 +23,4 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 pdfium-render = "0.8"
 rxing = "0.5"
+rust_xlsxwriter = "0.96"

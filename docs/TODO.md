@@ -9,45 +9,56 @@
 - [x] **识别规则** (`config/rules.yaml` + `config/mod.rs`)：从 Python 项目迁移的 5 类发票识别规则（火车票、酒店、用车、机票、发票），YAML 嵌入编译
 - [x] **规则引擎** (`services/recognition_service.rs`)：基于正则的发票类型检测 + 字段提取 + 金额提取
 - [x] **费用计算** (`services/expense_calculator.rs`)：费用汇总、报销单预览行生成（对齐 Python 的 `expense_calculator.py`）
-- [x] **结果格式化** (`services/result_formatter.rs`)：识别结果格式化，含类型中文标签
 - [x] **中文金额大写** (`utils/amount_converter.rs`)：数值转中文大写金额（与 Python 逻辑一致）
 - [x] **Tauri 命令** (`commands/recognition.rs`)：`recognize_invoices` 命令，接收文件路径列表 + 出差天数，返回完整识别结果，支持进度事件推送
-- [x] **错误处理** (`error.rs`)：`AppError` 枚举，支持 serde 序列化返回前端
-- [x] **Tauri 插件**：`dialog`、`fs`、`shell`、`store`、`opener` 已注册
-- [x] **Capabilities 权限**：`default.json` 已配置所有插件权限
+- [x] **错误处理** (`error.rs`)：`AppError` 枚举，支持 serde 序列化返回前端（含 `PdfParse`、`QrRead`、`Io`、`RulesLoad`、`ExcelExport`、`Cancelled`）
+- [x] **Tauri 插件**：`tauri-plugin-dialog` 已注册（按需保留，移除未使用的 fs/shell/store/opener）
+- [x] **Capabilities 权限**：`default.json` 配置 `core:default` + `dialog:default`
+
+### PDF 处理 (`services/pdf_service.rs`)
+
+- [x] **PDF 文本提取**：`extract_text_by_page` 接入 `pdfium-render`，按页提取文本（替代原计划的 `pdf-extract`）
+- [x] **二维码识别**：`extract_qr_codes` 接入 `rxing`（替代原计划的 `quircs` + `image`），多分辨率渲染（3000/2000/4000px）提高检出率
+- [x] **二维码金额提取**：`extract_amount_from_qr` 解析 `etripCar://`、`etripHotel://`、`etrip://` 协议头，按类型取对应字段金额
+- [x] **PDF 合并**：`merge_pdfs` 接入 `pdfium-render`（替代原计划的 `pdf + pdf-writer`），按入参顺序拼接所有页面
+
+### 识别能力 (`services/recognition_service.rs`)
+
+- [x] **确认函类型识别**：文本含「确认函」时通过二维码协议头区分机票/酒店/用车
+- [x] **火车票站名/车次解析**：兼容三种 pdfium 抽取格式——站名车次同行、两站名同行+独立车次行、老式报销凭证三行结构
+- [x] **金额提取多策略**：优先二维码金额 → 文本正则（价税合计/实付金额/费用合计等 8 种模式）
+- [x] **实际识别测试**：用真实 PDF 跑通完整识别流程，调试规则匹配
+
+### 导出功能
+
+- [x] **Excel 报销单导出** (`services/excel_service.rs`)：接入 `rust_xlsxwriter`，表头加粗、合计行加粗、固定列宽防中文截断，9 列与前端表格严格对齐
+- [x] **合并 PDF 命令** (`commands/pdf.rs`)：`merge_pdfs` Tauri 命令，前端调用 + 原生 save 对话框选输出路径
+- [x] **导出 Excel 命令** (`commands/excel.rs`)：`export_excel` Tauri 命令
 
 ### 前端 (`src/`)
 
-- [x] **Tauri API 封装** (`src/lib/tauri.ts`)：`pickPdfs()` 原生文件选择、`recognizeInvoices()` 识别命令 + 进度事件监听
+- [x] **Tauri API 封装** (`src/lib/tauri.ts`)：`pickPdfs()`、`pickSavePath()`、`recognizeInvoices()`、`mergePdfs()`、`exportExcel()` + 进度/记录事件监听
 - [x] **App 主流程** (`src/App.tsx`)：文件选择 → 识别 → 结果展示 完整流程，连接真实 Rust 后端
-- [x] **组件更新** (`src/components/Panels.tsx`)：文件删除传参优化、进度条按文件数显示
+- [x] **增量识别**：已识别文件不重跑，后端只解析新增 PDF，days 变化时用现有 records 重算汇总（250ms debounce）
+- [x] **组件更新** (`src/components/Panels.tsx`)：识别结果表 + 报销单预览表，各列最大宽度防截断
 - [x] **类型定义** (`src/types/index.ts`)：添加 `RecognitionResult`，与 Rust serde 序列化对齐
+- [x] **拖拽文件**：接入 Tauri 原生 `onDragDropEvent`（替代 HTML5 ondrop，避免 .path 非标准问题），含拖拽掩码提示
+- [x] **原生菜单栏** (`src-tauri/src/lib.rs`)：文件/导出/主题/帮助四组菜单，后端 emit id → 前端按 id 分发
+- [x] **出差日期日历** (`src/components/DateRangeModal.tsx`)：日期区间选择，days 由日期差派生（+1 含首尾）
 - [x] **TailwindCSS v4 + Vite 配置**：端口修正为 1420，npm 切换（pnpm 兼容性问题）
-- [x] **5 套主题**：基于 CSS 变量的主题切换保留
+- [x] **5 套主题**：基于 CSS 变量的主题切换保留，菜单栏可切换
 
 ---
 
 ## 待完成
 
-### 核心功能
-
-- [ ] **PDF 文本提取**：当前 `extract_pdf_text` 返回空，需接入 `pdf-extract` crate，按页提取文本
-- [ ] **二维码金额识别**：高铁票 / 发票二维码中的价税合计金额识别，需接入 `quircs` + `image` crate
-- [ ] **实际识别测试**：用真实 PDF 文件跑通完整识别流程，调试规则匹配
-
-### 导出功能
-
-- [ ] **Excel 报销单导出**：接入 `rust_xlsxwriter`，生成对齐 Python 版格式的报销单
-- [ ] **合并 PDF**：接入 `pdf` + `pdf-writer` crate，实现 PDF 合并
-
 ### UI 完善
 
-- [ ] **拖拽文件**：当前前端的 onDrop 仅获取文件名，需接入 Tauri 原生拖拽（`tauri-plugin-drag-drop`）
-- [ ] **识别结果手动编辑**：RightPanel 内可编辑识别结果字段
-- [ ] **历史记录**：使用 `tauri-plugin-store` 持久化识别历史
+- [ ] **识别结果手动编辑**：RightPanel 识别结果表当前只读，需支持字段内编辑（金额、车次、日期等）
+- [ ] **历史记录**：使用 `tauri-plugin-store` 持久化识别历史，支持回看历史报销单
 
 ### 工程化
 
-- [ ] **Nuitka → Tauri 打包**：`nuitka` 打包命令替换为 `tauri build`，配置 `--windows-company-name`、`--windows-product-name` 等
-- [ ] **日志系统**：接入 `tracing` 文件输出，按日期命名日志文件（对齐 Python 的日志规范）
+- [ ] **日志文件输出**：当前 `tracing` 仅控制台输出，需接入 `tracing-appender` 按日期命名日志文件（对齐 Python 的日志规范）
+- [ ] **Nuitka → Tauri 打包**：`nuitka` 打包命令替换为 `tauri build`，配置 `bundle.windows` 元数据（`companyName`、`productName` 等）与 pdfium 动态库打包
 - [ ] **CI/CD**：配置 GitHub Actions 自动构建 Windows 安装包
