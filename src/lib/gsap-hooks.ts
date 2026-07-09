@@ -138,13 +138,14 @@ export function useGsapRowStagger(
 ) {
   useGSAP(
     () => {
-      gsap.from(selector, {
-        opacity: 0,
-        y: 8,
-        duration: 0.3,
-        ease: 'power2.out',
-        stagger: 0.04,
-      })
+      // ponytail: 修复 gsap.from() 导致的 opacity 累积死亡问题
+      // 增量识别多次重跑时，每次 gsap.from() 都会重新从 0 动画到当前 opacity，
+      // 如果前一轮还没到 1 就被 kill，opacity 会越来越低最终接近 0。
+      // 使用 fromTo 强制终点为 opacity: 1，彻底解决问题。
+      gsap.fromTo(selector,
+        { opacity: 0, y: 8 },
+        { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out', stagger: 0.04 }
+      )
     },
     { dependencies: [rowCount], scope },
   )

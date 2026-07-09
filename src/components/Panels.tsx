@@ -69,7 +69,7 @@ export function LeftPanel({
         </button>
 
         {/* 文件列表 */}
-        <div className="mt-4 flex flex-col gap-1">
+        <div className="mt-4 flex flex-col gap-1 max-h-32 overflow-y-auto">
           {files.map((file, idx) => (
             <div
               key={idx}
@@ -87,7 +87,7 @@ export function LeftPanel({
                 onChange={() => {}}
                 className="w-4 h-4"
               />
-              <span className="text-sm truncate">{file}</span>
+              <span className="text-sm truncate">{file.split(/[\\/]/).pop()}</span>
             </div>
           ))}
         </div>
