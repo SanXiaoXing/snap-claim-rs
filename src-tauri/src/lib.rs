@@ -5,7 +5,7 @@ mod models;
 mod services;
 mod utils;
 
-use tauri::menu::{AboutMetadata, Menu, MenuItem, PredefinedMenuItem, Submenu};
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::Emitter;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -26,17 +26,9 @@ pub fn run() {
             commands::excel::export_excel,
         ])
         .setup(|app| {
-            // ponytail: 原生菜单栏——自定义项 emit id 给前端分发，原生子项(quit/about)自处理
+            // ponytail: 原生菜单栏——自定义项 emit id 给前端分发，原生子项(quit)自处理
             let quit = PredefinedMenuItem::quit(app, None)?;
-            let pkg = app.package_info();
-            let about_meta = AboutMetadata {
-                name: Some(pkg.name.to_string()),
-                version: Some(pkg.version.to_string()),
-                authors: Some(vec![pkg.authors.to_string()]),
-                comments: Some(pkg.description.to_string()),
-                ..Default::default()
-            };
-            let about = PredefinedMenuItem::about(app, None, Some(about_meta))?;
+            let about = MenuItem::with_id(app, "help_about", "关于 SnapClaim", true, None::<&str>)?;
 
             let file = Submenu::with_items(
                 app,

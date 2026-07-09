@@ -50,7 +50,7 @@ export function LeftPanel({
   // 磁吸主按钮 + 总额滚动（反馈：触觉化 + 数值就绪确认）
   const recognizeBtnRef = useRef<HTMLButtonElement>(null)
   const totalAmountRef = useRef<HTMLSpanElement>(null)
-  useGsapMagnetic(recognizeBtnRef, 0.2)
+  useGsapMagnetic(recognizeBtnRef, 0.1)
   useGsapCountUp(totalAmountRef, totals.total, 2)
 
   return (

@@ -3,6 +3,7 @@ import './styles/globals.css'
 import { LeftPanel, RightPanel } from './components/Panels'
 import { DragMask } from './components/DragMask'
 import { DateRangeModal } from './components/DateRangeModal'
+import { AboutModal } from './components/AboutModal'
 import { pickPdfs, recognizeInvoices, mergePdfs, pickSavePath, exportExcel } from './lib/tauri'
 import { useGsapMount } from './lib/gsap-hooks'
 import { listen } from '@tauri-apps/api/event'
@@ -36,6 +37,7 @@ function App() {
   const [totals, setTotals] = useState<Totals>(EMPTY_TOTALS)
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([])
   const [showDragMask, setShowDragMask] = useState(false)
+  const [showAbout, setShowAbout] = useState(false)
   // GSAP mount timeline 作用域：覆盖 main 内的卡片 + 右侧表格区
   const mainRef = useRef<HTMLElement>(null)
   useGsapMount(mainRef, '.gsap-enter', 0.08)
@@ -181,8 +183,8 @@ function App() {
   }, [])
 
   // 原生菜单事件分发：后端 emit id，前端按 id 路由到现有 handler
-  const handlers = useRef({ handleAddFiles, handleMergePdf, handleExportReport, handleClear, handleThemeChange, setStatus })
-  handlers.current = { handleAddFiles, handleMergePdf, handleExportReport, handleClear, handleThemeChange, setStatus }
+  const handlers = useRef({ handleAddFiles, handleMergePdf, handleExportReport, handleClear, handleThemeChange, setStatus, setShowAbout })
+  handlers.current = { handleAddFiles, handleMergePdf, handleExportReport, handleClear, handleThemeChange, setStatus, setShowAbout }
   useEffect(() => {
     const unlisten = listen<string>('menu://event', (e) => {
       const id = e.payload
@@ -192,6 +194,7 @@ function App() {
       else if (id === 'file_merge') h.handleMergePdf()
       else if (id === 'file_export') h.handleExportReport()
       else if (id === 'file_clear') h.handleClear()
+      else if (id === 'help_about') h.setShowAbout(true)
     })
     return () => { unlisten.then((fn) => fn()) }
   }, [])
@@ -255,6 +258,8 @@ function App() {
         }}
         onCancel={() => setShowDatePicker(false)}
       />
+
+      <AboutModal open={showAbout} onClose={() => setShowAbout(false)} />
     </div>
   )
 }

@@ -1,6 +1,15 @@
 @import "tailwindcss";
 @import "react-day-picker/style.css";
 
+/* 自定义标题字体 */
+@font-face {
+  font-family: "Emblema One";
+  src: url("/fonts/EmblemaOne-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* 5 套主题色：与 docs/design/index.html 严格对齐 */
 :root {
   /* 清爽办公风（默认） */
