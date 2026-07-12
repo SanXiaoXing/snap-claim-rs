@@ -27,6 +27,10 @@ pub struct InvoiceRecord {
     pub invoice_code: Option<String>,
     pub invoice_number: Option<String>,
     pub issue_date: Option<String>,
+    // ponytail: 用车记录的子分类——市内(false) / 往返(true)。
+    // 默认 false 兼容旧前端/旧记录，识别时新建的 car 记录一律 false。
+    #[serde(default)]
+    pub is_round_trip: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -36,6 +40,10 @@ pub struct Totals {
     pub flight: f64,
     pub hotel: f64,
     pub car: f64,
+    // ponytail: 往返交通（用车记录中 is_round_trip=true 的部分），独立合计。
+    // 报销单"交通金额"列同时容纳 train/invoice/round_trip。
+    #[serde(default)]
+    pub round_trip: f64,
     pub invoice: f64,
     pub subsidy: f64,
     pub advance: f64,

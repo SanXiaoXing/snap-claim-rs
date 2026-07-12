@@ -151,6 +151,8 @@ pub async fn recognize_invoices(
                     .get("issue_date")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string()),
+                // ponytail: 新建 car 记录默认市内交通，由前端批量分类弹窗改 is_round_trip
+                is_round_trip: false,
             };
 
             tracing::info!(

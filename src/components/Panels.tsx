@@ -12,8 +12,8 @@ const TYPE_MAP = {
   unknown: '未知',
 }
 
-// 报销单预览各列最大宽度（px），按列顺序：出发/到达/交通/飞机/住宿/市内/补助/天数/合计
-const PREVIEW_MAX_W = [140, 140, 120, 100, 100, 120, 120, 100, 120]
+// 报销单预览各列最大宽度（px），按列顺序：出发/到达/交通/飞机/住宿/市内/往返/补助/天数/合计
+const PREVIEW_MAX_W = [140, 140, 120, 100, 100, 120, 120, 120, 100, 120]
 
 export function LeftPanel({
   files,
@@ -183,9 +183,13 @@ export function LeftPanel({
 export function RightPanel({
   records,
   previewRows,
+  onOpenCarClassify,
+  previewHidden,
 }: {
   records: InvoiceRecord[]
   previewRows: PreviewRow[]
+  onOpenCarClassify: () => void
+  previewHidden: boolean
 }) {
   // 表格行 stagger 入场（反馈：新增记录逐行淡入，引导阅读顺序）
   const recordsTbodyRef = useRef<HTMLTableSectionElement>(null)
@@ -193,11 +197,24 @@ export function RightPanel({
   useGsapRowStagger(recordsTbodyRef, 'tr', records.length)
   useGsapRowStagger(previewTbodyRef, 'tr', previewRows.length)
 
+  // ponytail: 仅当存在 car 记录时显示批量分类入口
+  const hasCarRecords = records.some((r) => r.type === 'car')
+
   return (
     <div className="flex-1 flex flex-col gap-4 p-4">
       {/* 识别结果表格：各列设最大宽度，总宽随内容自适应 + 固定高度 + 不换行 */}
       <section className="mac-card p-4 gsap-enter">
-        <h2 className="font-bold mb-2">识别结果</h2>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="font-bold">识别结果</h2>
+          {hasCarRecords && (
+            <button
+              className="btn-secondary text-xs px-3 py-1"
+              onClick={onOpenCarClassify}
+            >
+              批量分类用车
+            </button>
+          )}
+        </div>
         <div className="max-h-[480px] overflow-auto rounded-lg border border-[var(--border)]">
           <table className="data-table">
             <thead>
@@ -212,7 +229,14 @@ export function RightPanel({
             <tbody ref={recordsTbodyRef}>
               {records.map((r, idx) => (
                 <tr key={idx}>
-                  <td className="max-w-[80px] px-2 py-1 whitespace-nowrap overflow-hidden text-ellipsis">{TYPE_MAP[r.type]}</td>
+                  <td className="max-w-[80px] px-2 py-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                    {TYPE_MAP[r.type]}
+                    {r.type === 'car' && (
+                      <span className="ml-1 text-xs text-[var(--fg-muted)]">
+                        ({r.isRoundTrip ? '往返' : '市内'})
+                      </span>
+                    )}
+                  </td>
                   <td className="max-w-[240px] px-2 py-1 whitespace-nowrap overflow-hidden text-ellipsis">
                     {r.trainNumber || r.hotelName || r.flightNumber || r.filename}
                   </td>
@@ -237,43 +261,53 @@ export function RightPanel({
       </section>
 
       {/* 报销单预览表格：各列设最大宽度，总宽随内容自适应 + 不换行 */}
-      <section className="mac-card p-4 gsap-enter">
-        <h2 className="font-bold mb-2">报销单预览</h2>
-        <div className="rounded-lg border border-[var(--border)] overflow-hidden">
-          <table className="data-table">
-            <thead>
-              <tr>
+      {previewHidden ? (
+        <section className="mac-card p-4 gsap-enter">
+          <h2 className="font-bold mb-2">报销单预览</h2>
+          <div className="rounded-lg border border-[var(--border)] py-10 text-center text-sm text-[var(--fg-muted)]">
+            请先完成用车记录分类，预览将随后显示
+          </div>
+        </section>
+      ) : (
+        <section className="mac-card p-4 gsap-enter">
+          <h2 className="font-bold mb-2">报销单预览</h2>
+          <div className="rounded-lg border border-[var(--border)] overflow-hidden">
+            <table className="data-table">
+              <thead>
+                <tr>
                 <th className="max-w-[140px] px-2 py-1 text-center whitespace-nowrap overflow-hidden text-ellipsis">出发地点</th>
                 <th className="max-w-[140px] px-2 py-1 text-center whitespace-nowrap overflow-hidden text-ellipsis">到达地点</th>
                 <th className="max-w-[120px] px-2 py-1 text-right whitespace-nowrap">交通金额</th>
                 <th className="max-w-[100px] px-2 py-1 text-right whitespace-nowrap">飞机票</th>
                 <th className="max-w-[100px] px-2 py-1 text-right whitespace-nowrap">住宿</th>
                 <th className="max-w-[120px] px-2 py-1 text-right whitespace-nowrap">市内交通</th>
+                <th className="max-w-[120px] px-2 py-1 text-right whitespace-nowrap">往返交通</th>
                 <th className="max-w-[120px] px-2 py-1 text-right whitespace-nowrap">补助标准</th>
                 <th className="max-w-[100px] px-2 py-1 text-center whitespace-nowrap overflow-hidden text-ellipsis">出差天数</th>
                 <th className="max-w-[120px] px-2 py-1 text-right whitespace-nowrap">合计</th>
               </tr>
-            </thead>
-            <tbody ref={previewTbodyRef}>
-              {previewRows.map((row, idx) => (
-                <tr key={idx}>
-                  {row.cells.map((cell, colIdx) => (
-                    <td
-                      key={colIdx}
-                      style={{ maxWidth: `${PREVIEW_MAX_W[colIdx]}px` }}
-                      className={`px-2 py-1 whitespace-nowrap ${typeof cell === 'number' ? 'text-right' : 'text-center overflow-hidden text-ellipsis'} ${row.bold ? 'font-bold bg-[var(--accent-light)]' : ''}`}
-                    >
-                      {typeof cell === 'number' && cell !== 0
-                        ? cell.toFixed(2)
-                        : cell || ''}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+              </thead>
+              <tbody ref={previewTbodyRef}>
+                {previewRows.map((row, idx) => (
+                  <tr key={idx}>
+                    {row.cells.map((cell, colIdx) => (
+                      <td
+                        key={colIdx}
+                        style={{ maxWidth: `${PREVIEW_MAX_W[colIdx]}px` }}
+                        className={`px-2 py-1 whitespace-nowrap ${typeof cell === 'number' ? 'text-right' : 'text-center overflow-hidden text-ellipsis'} ${row.bold ? 'font-bold bg-[var(--accent-light)]' : ''}`}
+                      >
+                        {typeof cell === 'number' && cell !== 0
+                          ? cell.toFixed(2)
+                          : cell || ''}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
   )
 }

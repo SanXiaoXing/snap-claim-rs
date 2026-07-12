@@ -3,15 +3,16 @@ use crate::models::PreviewRow;
 use rust_xlsxwriter::{Format, Workbook};
 use serde_json::Value;
 
-// ponytail: 表头与前端 Panels.tsx 的 9 列严格对齐，单一真相源在此副本——
+// ponytail: 表头与前端 Panels.tsx 的 10 列严格对齐，单一真相源在此副本——
 // 改列时需同步前端，否则表格与导出会错位。
-const HEADERS: [&str; 9] = [
+const HEADERS: [&str; 10] = [
     "出发地点",
     "到达地点",
     "交通金额",
     "飞机票",
     "住宿",
     "市内交通",
+    "往返交通",
     "补助标准",
     "出差天数",
     "合计",

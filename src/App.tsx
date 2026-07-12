@@ -4,6 +4,7 @@ import { LeftPanel, RightPanel } from './components/Panels'
 import { DragMask } from './components/DragMask'
 import { DateRangeModal } from './components/DateRangeModal'
 import { AboutModal } from './components/AboutModal'
+import { CarClassifyModal } from './components/CarClassifyModal'
 import { pickPdfs, recognizeInvoices, mergePdfs, pickSavePath, exportExcel } from './lib/tauri'
 import { useGsapMount } from './lib/gsap-hooks'
 import { listen } from '@tauri-apps/api/event'
@@ -38,6 +39,10 @@ function App() {
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([])
   const [showDragMask, setShowDragMask] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
+  const [showCarClassify, setShowCarClassify] = useState(false)
+  // ponytail: 识别完成且有 car 记录时进入"待分类"态——弹窗自动开 + 报销预览暂隐，
+  // 用户确认或取消后解除。手动点按钮二次分类不进入此态（预览已有，无需藏）。
+  const [carClassifyPending, setCarClassifyPending] = useState(false)
   // GSAP mount timeline 作用域：覆盖 main 内的卡片 + 右侧表格区
   const mainRef = useRef<HTMLElement>(null)
   useGsapMount(mainRef, '.gsap-enter', 0.08)
@@ -88,7 +93,18 @@ function App() {
       setRecords(result.records)
       setTotals(result.totals)
       setPreviewRows(result.previewRows)
-      setStatus(`识别完成，共 ${result.records.length} 条记录`)
+
+      // ponytail: 识别完成若有 car 记录则自动弹分类窗——
+      // 预览暂隐（pending=true）直到用户确认/取消；否则直接显示。
+      const hasCars = result.records.some((r) => r.type === 'car')
+      if (hasCars) {
+        setCarClassifyPending(true)
+        setShowCarClassify(true)
+        setStatus(`识别完成，共 ${result.records.length} 条记录，请先分类用车记录`)
+      } else {
+        setCarClassifyPending(false)
+        setStatus(`识别完成，共 ${result.records.length} 条记录`)
+      }
     } catch (e) {
       setStatus(`识别失败: ${String(e)}`)
     } finally {
@@ -156,6 +172,22 @@ function App() {
   const handleThemeChange = useCallback((theme: string) => {
     document.documentElement.setAttribute('data-theme', theme)
   }, [])
+
+  // 批量分类用车记录：前端改 isRoundTrip，后端空 file_paths 重算 totals/preview
+  // ponytail: 复用 recognize_invoices 的重算路径，不新增 Tauri 命令
+  const handleApplyCarClassification = useCallback(async (updated: InvoiceRecord[]) => {
+    setRecords(updated)
+    setShowCarClassify(false)
+    setCarClassifyPending(false)
+    try {
+      const result = await recognizeInvoices([], days, updated)
+      setTotals(result.totals)
+      setPreviewRows(result.previewRows)
+      setStatus(`已分类用车记录，市内 ${result.totals.car.toFixed(2)} / 往返 ${(result.totals.roundTrip ?? 0).toFixed(2)}`)
+    } catch (e) {
+      setStatus(`分类后重算失败: ${String(e)}`)
+    }
+  }, [days])
 
   // ponytail: 用 Tauri 原生 drag-drop 事件——HTML5 ondrop 在 Tauri 拦截下不触发，
   // .path 也非标准；原生事件直接给 paths 且无 DOM 冒泡，顺带消除 mask 闪烁。
@@ -242,7 +274,12 @@ function App() {
           onOpenDatePicker={() => setShowDatePicker(true)}
           totals={totals}
         />
-        <RightPanel records={records} previewRows={previewRows} />
+        <RightPanel
+          records={records}
+          previewRows={previewRows}
+          onOpenCarClassify={() => setShowCarClassify(true)}
+          previewHidden={carClassifyPending}
+        />
       </main>
 
       <DragMask isVisible={showDragMask} />
@@ -260,6 +297,16 @@ function App() {
       />
 
       <AboutModal open={showAbout} onClose={() => setShowAbout(false)} />
+
+      <CarClassifyModal
+        open={showCarClassify}
+        records={records}
+        onConfirm={handleApplyCarClassification}
+        onCancel={() => {
+          setShowCarClassify(false)
+          setCarClassifyPending(false)
+        }}
+      />
     </div>
   )
 }

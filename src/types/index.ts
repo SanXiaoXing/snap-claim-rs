@@ -20,6 +20,9 @@ export interface InvoiceRecord {
   // 用车字段
   carDate?: string
   mileage?: number
+  // 用车子分类：市内交通(false) / 往返交通(true)
+  // ponytail: 默认 false 兼容旧记录；批量分类弹窗切换
+  isRoundTrip?: boolean
   // 飞机字段
   flightNumber?: string
   departureCity?: string
@@ -36,6 +39,8 @@ export interface Totals {
   flight: number
   hotel: number
   car: number
+  // 往返交通合计（用车记录中 isRoundTrip=true 的部分）
+  roundTrip?: number
   invoice: number
   subsidy: number
   advance: number

@@ -66,7 +66,7 @@ export function AboutModal({ open, onClose }: AboutModalProps) {
             className="transition-all duration-200 hover:underline"
             style={{ color: 'var(--fg-muted)' }}
           >
-            Version 1.0.0
+            Version 1.1.0
           </a>
         </div>
 

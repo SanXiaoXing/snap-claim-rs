@@ -1,6 +1,6 @@
 [package]
 name = "snap-claim"
-version = "1.0.0"
+version = "1.1.0"
 description = "自动识别电子发票PDF、出行确认单，生成费用报销单"
 authors = ["SanXiaoXing"]
 edition = "2021"
