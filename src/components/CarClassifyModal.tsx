@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { gsap } from 'gsap'
+import { useGSAP } from '@gsap/react'
 import { X } from 'lucide-react'
 import type { InvoiceRecord } from '../types'
 
@@ -33,6 +35,26 @@ export function CarClassifyModal({
 
   const [target, setTarget] = useState<CarCategory>('round_trip')
   const [checked, setChecked] = useState<Set<number>>(new Set())
+
+  // ponytail: thumb 用 CSS transition 驱动 translateX，不依赖 GSAP 创建合成层（WKWebView bug）。
+  // GSAP 仅用于点击回弹反馈（scale，瞬时动画，不持久占层）。
+  const segWrapRef = useRef<HTMLDivElement>(null)
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia()
+      mm.add('(prefers-reduced-motion: no-preference)', () => {
+        const btns = segWrapRef.current?.querySelectorAll('[data-seg-btn]')
+        btns?.forEach((btn) => {
+          gsap.fromTo(
+            btn,
+            { scale: 0.94 },
+            { scale: 1, duration: 0.35, ease: 'back.out(2.5)' },
+          )
+        })
+      })
+    },
+    { dependencies: [target], scope: segWrapRef },
+  )
 
   // 每次打开同步：以当前 isRoundTrip 反推 checked
   // ponytail: 把当前已是 target 类型的车记录预勾选——用户多半就是来"加几条"或"减几条"
@@ -132,29 +154,42 @@ export function CarClassifyModal({
           </button>
         </div>
 
-        {/* 顶部单选 + 操作按钮 */}
+        {/* 顶部开关 + 操作按钮 */}
         <div className="flex flex-col gap-3 px-5 py-3 border-b border-[var(--border)]">
           <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2 cursor-pointer text-sm">
-              <input
-                type="radio"
-                name="car-target"
-                checked={target === 'city'}
-                onChange={() => setTarget('city')}
-                className="w-4 h-4"
+            {/* 分段开关：CSS transition 驱动 thumb 滑动，避免 GSAP 合成层拦截点击
+                ponytail: thumb 用 translateX + transition-transform，button 永远 z-10 在顶层 */}
+            <div
+              ref={segWrapRef}
+              role="radiogroup"
+              aria-label="归类目标"
+              className="relative inline-flex h-9 w-[186px] rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--card)_60%,transparent)] p-[3px]"
+            >
+              <div
+                className="pointer-events-none absolute top-[3px] bottom-[3px] left-[3px] w-[90px] rounded-full bg-[var(--accent)] shadow-[inset_0_1px_0_rgba(255,255,255,0.22)] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                style={{ transform: `translateX(${target === 'city' ? 0 : 90}px)` }}
               />
-              市内交通
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer text-sm">
-              <input
-                type="radio"
-                name="car-target"
-                checked={target === 'round_trip'}
-                onChange={() => setTarget('round_trip')}
-                className="w-4 h-4"
-              />
-              往返交通
-            </label>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={target === 'city'}
+                data-seg-btn
+                onClick={() => setTarget('city')}
+                className={`relative z-10 flex-1 rounded-full text-xs font-medium transition-colors duration-200 ${target === 'city' ? 'text-white' : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'}`}
+              >
+                市内交通
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={target === 'round_trip'}
+                data-seg-btn
+                onClick={() => setTarget('round_trip')}
+                className={`relative z-10 flex-1 rounded-full text-xs font-medium transition-colors duration-200 ${target === 'round_trip' ? 'text-white' : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'}`}
+              >
+                往返交通
+              </button>
+            </div>
             <div className="ml-auto flex gap-2">
               <button
                 className="btn-secondary text-xs px-3 py-1"
@@ -214,18 +249,24 @@ export function CarClassifyModal({
                       onChange={() => {}}
                       className="w-4 h-4"
                     />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm truncate">
+                    {/* 金额主视觉：tabular-nums 让数字纵向对齐，便于扫视比较 */}
+                    <div className="text-base font-semibold tabular-nums min-w-[100px]">
+                      {r.amount !== null ? (
+                        `¥${r.amount.toFixed(2)}`
+                      ) : (
+                        <span className="text-[var(--fg-muted)] font-normal">-</span>
+                      )}
+                    </div>
+                    {/* 名称缩略：truncate 自带省略号，日期 shrink-0 保留 */}
+                    <div className="flex-1 min-w-0 flex items-baseline gap-2">
+                      <span className="text-xs text-[var(--fg-muted)] truncate">
                         {r.filename}
-                        {r.carDate && (
-                          <span className="text-[var(--fg-muted)] ml-2 text-xs">
-                            {r.carDate}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-xs text-[var(--fg-muted)] mt-0.5">
-                        金额 {r.amount !== null ? `¥${r.amount.toFixed(2)}` : '-'}
-                      </div>
+                      </span>
+                      {r.carDate && (
+                        <span className="text-[10px] text-[var(--fg-muted)] shrink-0">
+                          {r.carDate}
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-right">
                       <span
