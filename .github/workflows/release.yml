@@ -1,0 +1,42 @@
+name: release
+
+# 触发：推送 v* 格式的 tag（如 v1.2.0）
+# tauri-action 自动：构建 → 用私钥签名 → 上传到 GitHub Releases → 生成 latest.json
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 安装前端依赖
+        run: npm ci
+
+      - name: 构建并发布（tauri-action）
+        uses: tauri-apps/tauri-action@v0
+        env:
+          # 签名私钥（由 `tauri signer generate` 生成，存为仓库 Secret）
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'SnapClaim ${{ github.ref_name }}'
+          releaseDraft: false
+          prerelease: false
+          # tauri-action 自动生成 latest.json 并上传到 Release Assets
+          updaterJsonPreferNsis: true

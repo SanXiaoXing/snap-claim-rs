@@ -5,11 +5,12 @@ import { DragMask } from './components/DragMask'
 import { DateRangeModal } from './components/DateRangeModal'
 import { AboutModal } from './components/AboutModal'
 import { CarClassifyModal } from './components/CarClassifyModal'
-import { pickPdfs, recognizeInvoices, mergePdfs, pickSavePath, exportExcel } from './lib/tauri'
+import { UpdateDialog } from './components/UpdateDialog'
+import { pickPdfs, recognizeInvoices, mergePdfs, pickSavePath, exportExcel, checkForUpdate, installUpdate } from './lib/tauri'
 import { useGsapMount } from './lib/gsap-hooks'
 import { listen } from '@tauri-apps/api/event'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
-import type { InvoiceRecord, Totals, PreviewRow } from './types'
+import type { InvoiceRecord, Totals, PreviewRow, UpdateInfo } from './types'
 
 const EMPTY_TOTALS: Totals = {
   train: 0, flight: 0, hotel: 0, car: 0, invoice: 0,
@@ -46,6 +47,10 @@ function App() {
   // GSAP mount timeline 作用域：覆盖 main 内的卡片 + 右侧表格区
   const mainRef = useRef<HTMLElement>(null)
   useGsapMount(mainRef, '.gsap-enter', 0.08)
+
+  // 自动更新：启动时检查一次，发现新版本弹窗
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
+  const [updateProgress, setUpdateProgress] = useState<{ downloaded: number; total: number } | null>(null)
 
   // 添加文件（Tauri 原生文件选择对话框）
   const handleAddFiles = useCallback(async () => {
@@ -214,9 +219,25 @@ function App() {
     return () => { unlisten.then((fn) => fn()) }
   }, [])
 
+  // 手动检查更新（菜单触发）：与启动静默检查不同，需给用户明确反馈
+  const handleManualCheckUpdate = useCallback(async () => {
+    setStatus('正在检查更新...')
+    try {
+      const info = await checkForUpdate()
+      if (info) {
+        setUpdateInfo(info)
+        setStatus(`发现新版本 ${info.version}`)
+      } else {
+        setStatus('已是最新版本')
+      }
+    } catch (e) {
+      setStatus(`检查更新失败: ${String(e)}`)
+    }
+  }, [setStatus])
+
   // 原生菜单事件分发：后端 emit id，前端按 id 路由到现有 handler
-  const handlers = useRef({ handleAddFiles, handleMergePdf, handleExportReport, handleClear, handleThemeChange, setStatus, setShowAbout })
-  handlers.current = { handleAddFiles, handleMergePdf, handleExportReport, handleClear, handleThemeChange, setStatus, setShowAbout }
+  const handlers = useRef({ handleAddFiles, handleMergePdf, handleExportReport, handleClear, handleThemeChange, setStatus, setShowAbout, handleManualCheckUpdate })
+  handlers.current = { handleAddFiles, handleMergePdf, handleExportReport, handleClear, handleThemeChange, setStatus, setShowAbout, handleManualCheckUpdate }
   useEffect(() => {
     const unlisten = listen<string>('menu://event', (e) => {
       const id = e.payload
@@ -227,6 +248,7 @@ function App() {
       else if (id === 'file_export') h.handleExportReport()
       else if (id === 'file_clear') h.handleClear()
       else if (id === 'help_about') h.setShowAbout(true)
+      else if (id === 'help_check_update') h.handleManualCheckUpdate()
     })
     return () => { unlisten.then((fn) => fn()) }
   }, [])
@@ -248,6 +270,29 @@ function App() {
     }, 250)
     return () => clearTimeout(t)
   }, [days, isRecognizing])
+
+  // 自动更新：启动时静默检查一次，有新版本才弹窗；失败静默（不打扰用户）
+  useEffect(() => {
+    checkForUpdate().then(setUpdateInfo).catch(() => {})
+  }, [])
+
+  // 点击「立即更新」：下载安装，进度驱动 UpdateDialog 的进度条，完成后后端自动重启
+  const handleInstallUpdate = useCallback(async () => {
+    setUpdateProgress({ downloaded: 0, total: 0 })
+    try {
+      await installUpdate((downloaded, total) => {
+        setUpdateProgress({ downloaded, total })
+      })
+    } catch (e) {
+      setStatus(`更新失败: ${String(e)}`)
+      setUpdateProgress(null)
+    }
+  }, [setStatus])
+
+  const handleLaterUpdate = useCallback(() => {
+    setUpdateInfo(null)
+    setUpdateProgress(null)
+  }, [])
 
   return (
     <div
@@ -297,6 +342,15 @@ function App() {
       />
 
       <AboutModal open={showAbout} onClose={() => setShowAbout(false)} />
+
+      {updateInfo && (
+        <UpdateDialog
+          update={updateInfo}
+          onInstall={handleInstallUpdate}
+          onLater={handleLaterUpdate}
+          progress={updateProgress}
+        />
+      )}
 
       <CarClassifyModal
         open={showCarClassify}

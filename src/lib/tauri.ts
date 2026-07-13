@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog'
-import type { InvoiceRecord, RecognitionResult, PreviewRow } from '../types'
+import type { InvoiceRecord, RecognitionResult, PreviewRow, UpdateInfo } from '../types'
 
 // ── 文件选择 ──
 
@@ -74,5 +74,35 @@ export async function recognizeInvoices(
   } finally {
     unlistenProgress?.()
     unlistenRecord?.()
+  }
+}
+
+// ── 自动更新 ──
+
+// 检查新版本，返回 null 表示已是最新
+export async function checkForUpdate(): Promise<UpdateInfo | null> {
+  try {
+    return await invoke<UpdateInfo | null>('check_for_update')
+  } catch (e) {
+    throw new Error(typeof e === 'string' ? e : JSON.stringify(e))
+  }
+}
+
+// 下载并安装更新，onProgress 回调接收 (downloaded, total) 字节，安装完成后应用自动重启
+export async function installUpdate(
+  onProgress?: (downloaded: number, total: number) => void
+): Promise<void> {
+  let unlisten: UnlistenFn | undefined
+  if (onProgress) {
+    unlisten = await listen<[number, number]>('updater://progress', (e) => {
+      onProgress(e.payload[0], e.payload[1])
+    })
+  }
+  try {
+    await invoke<void>('install_update')
+  } catch (e) {
+    throw new Error(typeof e === 'string' ? e : JSON.stringify(e))
+  } finally {
+    unlisten?.()
   }
 }

@@ -20,10 +20,13 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             commands::recognition::recognize_invoices,
             commands::pdf::merge_pdfs,
             commands::excel::export_excel,
+            commands::update::check_for_update,
+            commands::update::install_update,
         ])
         .setup(|app| {
             // ponytail: 原生菜单栏——自定义项 emit id 给前端分发，原生子项(quit)自处理
@@ -69,6 +72,8 @@ pub fn run() {
                 "帮助",
                 true,
                 &[
+                    &MenuItem::with_id(app, "help_check_update", "检查更新...", true, None::<&str>)?,
+                    &PredefinedMenuItem::separator(app)?,
                     &about,
                 ],
             )?;

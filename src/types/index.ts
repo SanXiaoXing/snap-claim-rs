@@ -59,3 +59,10 @@ export interface RecognitionResult {
   totals: Totals
   previewRows: PreviewRow[]
 }
+
+// 自动更新：来自 tauri-plugin-updater 的检查结果（与 Rust UpdateInfo 对齐）
+export interface UpdateInfo {
+  version: string
+  notes: string
+  pubDate?: string
+}

@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { getVersion } from '@tauri-apps/api/app'
 import { gsap } from 'gsap'
 
 interface AboutModalProps {
@@ -8,6 +9,7 @@ interface AboutModalProps {
 
 export function AboutModal({ open, onClose }: AboutModalProps) {
   const contentRef = useRef<HTMLDivElement>(null)
+  const [version, setVersion] = useState('')
 
   useEffect(() => {
     if (open && contentRef.current) {
@@ -18,6 +20,11 @@ export function AboutModal({ open, onClose }: AboutModalProps) {
       )
     }
   }, [open])
+
+  // ponytail: 版本取自 tauri.conf.json（与 Cargo.toml 保持一致），用原生 API 避免硬编码漂移
+  useEffect(() => {
+    if (!version) getVersion().then(setVersion).catch(() => setVersion(''))
+  }, [version])
 
   if (!open) return null
 
@@ -66,7 +73,7 @@ export function AboutModal({ open, onClose }: AboutModalProps) {
             className="transition-all duration-200 hover:underline"
             style={{ color: 'var(--fg-muted)' }}
           >
-            Version 1.1.0
+            Version {version || '...'}
           </a>
         </div>
 

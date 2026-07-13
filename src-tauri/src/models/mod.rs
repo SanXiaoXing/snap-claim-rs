@@ -66,3 +66,12 @@ pub struct RecognitionResult {
     pub totals: Totals,
     pub preview_rows: Vec<PreviewRow>,
 }
+
+// 自动更新：检查结果传给前端（与 TS UpdateInfo 对齐）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateInfo {
+    pub version: String,
+    pub notes: String,
+    pub pub_date: Option<String>,
+}

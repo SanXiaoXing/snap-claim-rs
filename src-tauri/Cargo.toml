@@ -1,6 +1,6 @@
 [package]
 name = "snap-claim"
-version = "1.1.0"
+version = "1.2.0"
 description = "自动识别电子发票PDF、出行确认单，生成费用报销单"
 authors = ["SanXiaoXing"]
 edition = "2021"
@@ -15,6 +15,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
+tauri-plugin-updater = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"

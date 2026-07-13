@@ -13,6 +13,8 @@ pub enum AppError {
     RulesLoad(String),
     #[serde(rename = "ExcelExport")]
     ExcelExport(String),
+    #[serde(rename = "Updater")]
+    Updater(String),
 }
 
 impl std::fmt::Display for AppError {
@@ -23,6 +25,7 @@ impl std::fmt::Display for AppError {
             Self::Io(s) => write!(f, "IO 错误: {s}"),
             Self::RulesLoad(s) => write!(f, "规则加载失败: {s}"),
             Self::ExcelExport(s) => write!(f, "Excel 导出失败: {s}"),
+            Self::Updater(s) => write!(f, "更新检查失败: {s}"),
         }
     }
 }

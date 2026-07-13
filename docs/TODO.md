@@ -80,3 +80,22 @@
 - [ ] **日志文件输出**：当前 `tracing` 仅控制台输出，需接入 `tracing-appender` 按日期命名日志文件（对齐 Python 的日志规范）
 - [ ] **Nuitka → Tauri 打包**：`nuitka` 打包命令替换为 `tauri build`，配置 `bundle.windows` 元数据（`companyName`、`productName` 等）与 pdfium 动态库打包
 - [ ] **CI/CD**：配置 GitHub Actions 自动构建 Windows 安装包
+
+### 自动更新（计划 v1.2.0 实现）
+
+采用 **GitHub Releases + Tauri 官方 Updater** 方案，无需自建服务器，维护成本最低。
+
+- [x] **接入 Updater 插件**：`tauri-plugin-updater`（Tauri 2 官方插件），`Cargo.toml` 增加依赖，`lib.rs` 注册 `tauri_plugin_updater::Builder::new()`
+- [x] **版本号单一来源**：`tauri.conf.json` 的 `version` 与 `Cargo.toml` 保持一致（当前 1.1.0），前端已通过 `@tauri-apps/api/app` 的 `getVersion()` 动态读取，避免硬编码漂移
+- [x] **更新源配置**：`tauri.conf.json` 配置 `plugins.updater.endpoints` 指向 GitHub Releases 的 `latest.json`，`pubkey` 占位待替换
+- [x] **客户端更新流程**：启动时 `check_for_update` 命令比对版本 → 发现新版本弹窗（版本号 + 更新内容 + 立即更新/稍后）→ 下载安装包（进度条）→ 安装并重启
+  - UpdateDialog 组件用 TDD 覆盖 5 个行为（渲染/立即更新/稍后/进度/无进度），测试在 `src/components/UpdateDialog.test.tsx`
+- [x] **GitHub Action 自动发布**：`git tag v1.x.0` → push tag → tauri-action 执行 `tauri build` → 生成安装包 + `latest.json` → 上传到 GitHub Releases
+  - 发布流程最终只需 `git tag && git push origin <tag>`
+  - `latest.json` 由 tauri-action 自动生成，不手写
+
+#### 上线前必做（用户手动，代码无法代劳）
+- [ ] **生成签名密钥对**：`npx @tauri-apps/cli signer generate -w ~/.tauri/snap-claim.key`
+  - 公钥写入 [tauri.conf.json](../src-tauri/tauri.conf.json) 的 `plugins.updater.pubkey`（当前为占位符 `REPLACE_WITH_GENERATED_PUBKEY`）
+  - 私钥设为 GitHub 仓库 Secret `TAURI_SIGNING_PRIVATE_KEY`，密码设为 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+- [ ] **端到端验证**：首次发版后用旧版本客户端实测一次自动更新流程
