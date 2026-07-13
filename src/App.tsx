@@ -176,6 +176,15 @@ function App() {
   // 主题切换
   const handleThemeChange = useCallback((theme: string) => {
     document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('snap-claim-theme', theme)
+  }, [])
+
+  // 启动时恢复已保存的主题
+  useEffect(() => {
+    const saved = localStorage.getItem('snap-claim-theme')
+    if (saved) {
+      document.documentElement.setAttribute('data-theme', saved)
+    }
   }, [])
 
   // 批量分类用车记录：前端改 isRoundTrip，后端空 file_paths 重算 totals/preview
