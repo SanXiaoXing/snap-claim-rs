@@ -271,9 +271,12 @@ function App() {
     return () => clearTimeout(t)
   }, [days, isRecognizing])
 
-  // 自动更新：启动时静默检查一次，有新版本才弹窗；失败静默（不打扰用户）
+  // 自动更新：延迟 3 秒后静默检查，避免启动时阻塞 UI 渲染
   useEffect(() => {
-    checkForUpdate().then(setUpdateInfo).catch(() => {})
+    const t = setTimeout(() => {
+      checkForUpdate().then(setUpdateInfo).catch(() => {})
+    }, 3000)
+    return () => clearTimeout(t)
   }, [])
 
   // 点击「立即更新」：下载安装，进度驱动 UpdateDialog 的进度条，完成后后端自动重启
