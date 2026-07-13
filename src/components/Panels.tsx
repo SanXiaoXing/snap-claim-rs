@@ -17,6 +17,7 @@ const PREVIEW_MAX_W = [140, 140, 120, 100, 100, 120, 120, 120, 100, 120]
 
 export function LeftPanel({
   files,
+  records,
   onAddFiles,
   onDeleteSelected,
   onClear,
@@ -32,6 +33,7 @@ export function LeftPanel({
   totals,
 }: {
   files: string[]
+  records: InvoiceRecord[]
   onAddFiles: () => void
   onDeleteSelected: (indices: Set<number>) => void
   onClear: () => void
@@ -52,6 +54,10 @@ export function LeftPanel({
   const totalAmountRef = useRef<HTMLSpanElement>(null)
   useGsapMagnetic(recognizeBtnRef, 0.1)
   useGsapCountUp(totalAmountRef, totals.total, 2)
+
+  // 单据张数统计：城际交通 = 火车票 + 飞机票，其他 = 剩余
+  const intercityCount = records.filter((r) => r.type === 'train' || r.type === 'flight').length
+  const otherCount = records.length - intercityCount
 
   return (
     <div className="w-[340px] flex flex-col gap-4 p-4">
@@ -162,7 +168,7 @@ export function LeftPanel({
           <div className="text-2xl font-bold text-[var(--accent)]">
             ¥ <span ref={totalAmountRef}>{totals.total.toFixed(2)}</span>
           </div>
-          <div className="text-sm text-[var(--fg-muted)] mt-1">{totals.chinese}</div>
+          <div className="text-base text-[var(--fg-muted)] mt-1">{totals.chinese}</div>
 
           <div className="mt-4 flex justify-around">
             <div>
@@ -173,6 +179,23 @@ export function LeftPanel({
               <div className="text-sm text-[var(--fg-muted)]">退补金额</div>
               <div className="font-bold">¥ {totals.refund.toFixed(2)}</div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 单据张数统计 */}
+      <section className="mac-card p-4 gsap-enter">
+        <h2 className="font-bold mb-3">单据张数</h2>
+        <div className="flex justify-around">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-[var(--accent)] tabular-nums">{intercityCount}</div>
+            <div className="text-xs text-[var(--fg-muted)] mt-1">城际交通</div>
+            <div className="text-[10px] text-[var(--fg-muted)] mt-0.5">火车票 + 飞机票</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold tabular-nums">{otherCount}</div>
+            <div className="text-xs text-[var(--fg-muted)] mt-1">其他</div>
+            <div className="text-[10px] text-[var(--fg-muted)] mt-0.5">酒店 / 用车 / 发票</div>
           </div>
         </div>
       </section>

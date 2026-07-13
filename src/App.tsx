@@ -308,6 +308,7 @@ function App() {
       <main ref={mainRef} className="flex-1 flex overflow-hidden">
         <LeftPanel
           files={files}
+          records={records}
           onAddFiles={handleAddFiles}
           onDeleteSelected={handleDeleteSelected}
           onClear={handleClear}
