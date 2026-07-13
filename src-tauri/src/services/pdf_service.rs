@@ -2,10 +2,24 @@ use crate::error::AppError;
 use pdfium_render::prelude::*;
 use std::path::Path;
 
-/// 初始化 pdfium，依次尝试多个路径加载 pdfium.dll
+/// 初始化 pdfium：优先从 exe 同级的 resources/ 子目录加载（打包后位置）
 fn init_pdfium() -> Result<Pdfium, AppError> {
-    let paths = &["./", "./src-tauri/", "../"];
-    for dir in paths {
+    // ponytail: 打包后 dll 在 exe 同级 resources/ 下；开发时在 src-tauri/resources/
+    let exe_dir = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|p| p.to_path_buf()));
+    let paths: Vec<String> = exe_dir
+        .into_iter()
+        .flat_map(|p| {
+            [
+                p.join("resources").to_string_lossy().into_owned(),
+                p.to_string_lossy().into_owned(),
+            ]
+        })
+        .chain(["./src-tauri/resources/".into(), "./src-tauri/".into()])
+        .collect();
+
+    for dir in &paths {
         if let Ok(binder) = Pdfium::bind_to_library(Pdfium::pdfium_platform_library_name_at_path(dir)) {
             return Ok(Pdfium::new(binder));
         }

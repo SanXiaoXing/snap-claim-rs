@@ -36,6 +36,9 @@
     "publisher": "SanXiaoXing",
     "copyright": "Copyright © 2026 SanXiaoXing. All rights reserved.",
     "createUpdaterArtifacts": true,
+    "resources": {
+      "resources/pdfium.dll": "resources/pdfium.dll"
+    },
     "windows": {
       "nsis": {
         "installMode": "currentUser"
