@@ -38,11 +38,9 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
 
       - name: 构建并发布（tauri-action）
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v0.5.4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'SnapClaim ${{ github.ref_name }}'
@@ -50,3 +48,4 @@ jobs:
           prerelease: false
           args: --ci
           updaterJsonPreferNsis: true
+          privateKey: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
