@@ -35,6 +35,7 @@
     ],
     "publisher": "SanXiaoXing",
     "copyright": "Copyright © 2026 SanXiaoXing. All rights reserved.",
+    "createUpdaterArtifacts": true,
     "windows": {
       "nsis": {
         "installMode": "currentUser"
@@ -48,7 +49,10 @@
         "https://github.com/SanXiaoXing/snap-claim-rs/releases/latest/download/latest.json"
       ],
       "dialog": false,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNBRjk2REFENUUxNzZFQzQKUldURWJoZGVyVzM1T2xjS0dETHE5dURBc29JZ0xyS0pNSVlQRHEydnNhOXlYT3FYazRlR3JaS0YK"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNBRjk2REFENUUxNzZFQzQKUldURWJoZGVyVzM1T2xjS0dETHE5dURBc29JZ0xyS0pNSVlQRHEydnNhOXlYT3FYazRlR3JaS0YK",
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

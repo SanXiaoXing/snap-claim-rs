@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core'
+import { invoke, Channel } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog'
 import type { InvoiceRecord, RecognitionResult, PreviewRow, UpdateInfo } from '../types'
@@ -88,21 +88,39 @@ export async function checkForUpdate(): Promise<UpdateInfo | null> {
   }
 }
 
-// 下载并安装更新，onProgress 回调接收 (downloaded, total) 字节，安装完成后应用自动重启
+// 下载进度事件（与 Rust DownloadProgressEvent 对齐）
+export interface DownloadProgressEvent {
+  event: 'Started' | 'Progress' | 'Finished'
+  data?: { contentLength?: number; chunkLength?: number }
+}
+
+// 下载并安装更新，通过 Channel 接收进度，安装完成后应用自动重启
 export async function installUpdate(
-  onProgress?: (downloaded: number, total: number) => void
+  onProgress?: (downloaded: number, total: number | null) => void
 ): Promise<void> {
-  let unlisten: UnlistenFn | undefined
-  if (onProgress) {
-    unlisten = await listen<[number, number]>('updater://progress', (e) => {
-      onProgress(e.payload[0], e.payload[1])
-    })
+  const channel = new Channel<DownloadProgressEvent>()
+  let downloaded = 0
+  let total: number | null = null
+
+  channel.onmessage = (event: DownloadProgressEvent) => {
+    switch (event.event) {
+      case 'Started':
+        total = event.data?.contentLength ?? null
+        onProgress?.(0, total)
+        break
+      case 'Progress':
+        downloaded += event.data?.chunkLength ?? 0
+        onProgress?.(downloaded, total)
+        break
+      case 'Finished':
+        onProgress?.(downloaded, total ?? downloaded)
+        break
+    }
   }
+
   try {
-    await invoke<void>('install_update')
+    await invoke<void>('install_update', { onEvent: channel })
   } catch (e) {
     throw new Error(typeof e === 'string' ? e : JSON.stringify(e))
-  } finally {
-    unlisten?.()
   }
 }

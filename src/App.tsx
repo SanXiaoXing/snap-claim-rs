@@ -50,7 +50,7 @@ function App() {
 
   // 自动更新：启动时检查一次，发现新版本弹窗
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
-  const [updateProgress, setUpdateProgress] = useState<{ downloaded: number; total: number } | null>(null)
+  const [updateProgress, setUpdateProgress] = useState<{ downloaded: number; total: number | null } | null>(null)
 
   // 添加文件（Tauri 原生文件选择对话框）
   const handleAddFiles = useCallback(async () => {
@@ -278,7 +278,7 @@ function App() {
 
   // 点击「立即更新」：下载安装，进度驱动 UpdateDialog 的进度条，完成后后端自动重启
   const handleInstallUpdate = useCallback(async () => {
-    setUpdateProgress({ downloaded: 0, total: 0 })
+    setUpdateProgress({ downloaded: 0, total: null })
     try {
       await installUpdate((downloaded, total) => {
         setUpdateProgress({ downloaded, total })

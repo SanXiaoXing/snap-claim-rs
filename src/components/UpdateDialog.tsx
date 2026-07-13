@@ -5,12 +5,12 @@ interface UpdateDialogProps {
   onInstall: () => void
   onLater: () => void
   // 下载进度，null/undefined 表示未开始下载
-  progress?: { downloaded: number; total: number } | null
+  progress?: { downloaded: number; total: number | null } | null
 }
 
 export function UpdateDialog({ update, onInstall, onLater, progress }: UpdateDialogProps) {
   const percent =
-    progress && progress.total > 0
+    progress && progress.total !== null && progress.total > 0
       ? Math.round((progress.downloaded / progress.total) * 100)
       : null
 
