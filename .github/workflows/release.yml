@@ -26,10 +26,20 @@ jobs:
       - name: 安装前端依赖
         run: npm ci
 
+      - name: 验证签名密钥是否加载
+        shell: pwsh
+        run: |
+          if ($env:TAURI_SIGNING_PRIVATE_KEY) {
+            Write-Host "TAURI_SIGNING_PRIVATE_KEY is loaded ($($env:TAURI_SIGNING_PRIVATE_KEY.Length) chars)"
+          } else {
+            throw "TAURI_SIGNING_PRIVATE_KEY is missing! Check repository Secrets."
+          }
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+
       - name: 构建并发布（tauri-action）
         uses: tauri-apps/tauri-action@v0
         env:
-          # 签名私钥（由 `tauri signer generate` 生成，存为仓库 Secret）
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -38,5 +48,5 @@ jobs:
           releaseName: 'SnapClaim ${{ github.ref_name }}'
           releaseDraft: false
           prerelease: false
-          # tauri-action 自动生成 latest.json 并上传到 Release Assets
+          args: --ci
           updaterJsonPreferNsis: true
