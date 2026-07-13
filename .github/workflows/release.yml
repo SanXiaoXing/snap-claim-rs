@@ -18,7 +18,7 @@ jobs:
       - name: 安装 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: 安装 Rust
         uses: dtolnay/rust-toolchain@stable
@@ -38,9 +38,10 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
 
       - name: 构建并发布（tauri-action）
-        uses: tauri-apps/tauri-action@v0.5.4
+        uses: tauri-apps/tauri-action@v0.5.17
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'SnapClaim ${{ github.ref_name }}'
@@ -48,4 +49,4 @@ jobs:
           prerelease: false
           args: --ci
           updaterJsonPreferNsis: true
-          privateKey: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          includeUpdaterJson: true
