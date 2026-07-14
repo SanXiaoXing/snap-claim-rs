@@ -228,6 +228,18 @@ function App() {
     return () => { unlisten.then((fn) => fn()) }
   }, [])
 
+  // ponytail: 从系统打开文件（拖到任务栏图标 / 右键"打开方式" / 双击关联 PDF）
+  // 后端 emit file://open 事件，前端监听后去重添加——复用 filesRef 读最新状态。
+  useEffect(() => {
+    const unlisten = listen<string[]>('file://open', (e) => {
+      const fresh = e.payload.filter((f) => !filesRef.current.includes(f))
+      if (fresh.length === 0) return
+      setFiles((prev) => [...prev, ...fresh])
+      setStatus(`已添加 ${filesRef.current.length + fresh.length} 个文件（从系统打开）`)
+    })
+    return () => { unlisten.then((fn) => fn()) }
+  }, [])
+
   // 手动检查更新（菜单触发）：与启动静默检查不同，需给用户明确反馈
   const handleManualCheckUpdate = useCallback(async () => {
     setStatus('正在检查更新...')
