@@ -43,6 +43,9 @@
     "windows": {
       "nsis": {
         "installMode": "currentUser"
+      },
+      "wix": {
+        "lightArgs": ["-sval"]
       }
     },
     "fileAssociations": [
