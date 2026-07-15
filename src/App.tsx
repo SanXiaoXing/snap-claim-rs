@@ -5,6 +5,7 @@ import { DragMask } from './components/DragMask'
 import { DateRangeModal } from './components/DateRangeModal'
 import { AboutModal } from './components/AboutModal'
 import { CarClassifyModal } from './components/CarClassifyModal'
+import { MergePdfModal } from './components/MergePdfModal'
 import { UpdateDialog } from './components/UpdateDialog'
 import { UpdateProgressWidget } from './components/UpdateProgressWidget'
 import { pickPdfs, recognizeInvoices, mergePdfs, pickSavePath, exportExcel, checkForUpdate, downloadUpdate, installDownloadedUpdate } from './lib/tauri'
@@ -42,6 +43,7 @@ function App() {
   const [showDragMask, setShowDragMask] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
   const [showCarClassify, setShowCarClassify] = useState(false)
+  const [showMergePdf, setShowMergePdf] = useState(false)
   // ponytail: 识别完成且有 car 记录时进入"待分类"态——弹窗自动开 + 报销预览暂隐，
   // 用户确认或取消后解除。手动点按钮二次分类不进入此态（预览已有，无需藏）。
   const [carClassifyPending, setCarClassifyPending] = useState(false)
@@ -135,25 +137,31 @@ function App() {
     setStatus('等待上传文件...')
   }, [])
 
-  // 合并 PDF：默认文件名取出差日期区间 YYYYMMDD-YYYYMMDD.pdf，缺日期回落 merged.pdf
-  const handleMergePdf = useCallback(async () => {
+  // 合并 PDF：打开弹窗让用户拖拽调整顺序，确认后执行合并
+  const handleMergePdf = useCallback(() => {
     if (files.length === 0) {
       setStatus('请先添加 PDF 文件')
       return
     }
+    setShowMergePdf(true)
+  }, [files.length])
+
+  // 弹窗确认：按用户排好的顺序选路径并合并
+  const handleConfirmMerge = useCallback(async (orderedFiles: string[]) => {
+    setShowMergePdf(false)
     const name = startDate && endDate
       ? `${startDate.replace(/-/g, '')}-${endDate.replace(/-/g, '')}.pdf`
       : 'merged.pdf'
     const output = await pickSavePath(name, 'pdf')
     if (!output) return
-    setStatus(`正在合并 ${files.length} 个文件...`)
+    setStatus(`正在合并 ${orderedFiles.length} 个文件...`)
     try {
-      await mergePdfs(files, output)
-      setStatus(`已合并 ${files.length} 个文件到 ${output}`)
+      await mergePdfs(orderedFiles, output)
+      setStatus(`已合并 ${orderedFiles.length} 个文件到 ${output}`)
     } catch (e) {
       setStatus(`合并失败: ${String(e)}`)
     }
-  }, [files, startDate, endDate])
+  }, [startDate, endDate])
 
   // 导出报销单：previewRows 直接发给后端写 .xlsx，文件名与合并 PDF 同规则（出差日期区间）
   const handleExportReport = useCallback(async () => {
@@ -389,6 +397,13 @@ function App() {
       />
 
       <AboutModal open={showAbout} onClose={() => setShowAbout(false)} />
+
+      <MergePdfModal
+        open={showMergePdf}
+        files={files}
+        onConfirm={handleConfirmMerge}
+        onCancel={() => setShowMergePdf(false)}
+      />
 
       {updateInfo && (
         <UpdateDialog
