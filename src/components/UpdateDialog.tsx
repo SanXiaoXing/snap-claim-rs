@@ -7,17 +7,10 @@ interface UpdateDialogProps {
   update: UpdateInfo
   onInstall: () => void
   onLater: () => void
-  // 下载进度，null/undefined 表示未开始下载
-  progress?: { downloaded: number; total: number | null } | null
 }
 
-export function UpdateDialog({ update, onInstall, onLater, progress }: UpdateDialogProps) {
+export function UpdateDialog({ update, onInstall, onLater }: UpdateDialogProps) {
   const cardRef = useRef<HTMLDivElement>(null)
-  const percent =
-    progress && progress.total !== null && progress.total > 0
-      ? Math.round((progress.downloaded / progress.total) * 100)
-      : null
-  const downloading = percent !== null
 
   useEffect(() => {
     if (cardRef.current) {
@@ -59,28 +52,13 @@ export function UpdateDialog({ update, onInstall, onLater, progress }: UpdateDia
           {update.notes}
         </div>
 
-        {/* 下载进度 */}
-        {downloading && (
-          <div className="mb-5">
-            <div className="text-xs text-center mb-1.5" style={{ color: "var(--fg-muted)" }}>
-              下载中 {percent}%
-            </div>
-            <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "var(--border)" }}>
-              <div
-                className="progress-bar-fill rounded-full"
-                style={{ width: `${percent}%` }}
-              />
-            </div>
-          </div>
-        )}
-
         {/* 按钮 */}
         <div className="flex justify-end gap-3">
           <button onClick={onLater} className="btn-secondary">
             稍后
           </button>
-          <button onClick={onInstall} className="btn-primary" disabled={downloading}>
-            {downloading ? "下载中..." : "立即更新"}
+          <button onClick={onInstall} className="btn-primary">
+            立即更新
           </button>
         </div>
       </div>

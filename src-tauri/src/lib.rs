@@ -7,7 +7,7 @@ mod utils;
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::Emitter;
-use commands::update::PendingUpdate;
+use commands::update::{PendingUpdate, PendingUpdateBytes};
 use std::sync::Mutex;
 
 /// 从命令行参数中提取 PDF 文件路径，emit 给前端
@@ -44,14 +44,16 @@ pub fn run() {
             emit_pdf_args(app, &argv);
         }))
         .manage(PendingUpdate(Mutex::new(None)))
+        .manage(PendingUpdateBytes(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             commands::recognition::recognize_invoices,
             commands::pdf::merge_pdfs,
             commands::excel::export_excel,
             commands::update::check_for_update,
+            commands::update::download_update,
             commands::update::install_update,
         ])
-        .setup(|app| {
+        .setup(move |app| {
             // 首次启动：如果命令行带了 PDF 参数，也 emit 给前端
             emit_pdf_args(app.handle(), &args);
             // ponytail: 原生菜单栏——自定义项 emit id 给前端分发，原生子项(quit)自处理

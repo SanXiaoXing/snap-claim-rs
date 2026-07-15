@@ -37,6 +37,21 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
 
+      - name: 从 RELEASE_NOTES.md 提取当前版本说明
+        id: release_notes
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $content = Get-Content -Raw -Path "RELEASE_NOTES.md"
+          $pattern = "(?sm)^##\s*$([regex]::Escape($tag))\s*\r?\n(.*?)(?=^##\s*v|\z)"
+          $match = [regex]::Match($content, $pattern)
+          $body = if ($match.Success) { $match.Groups[1].Value.Trim() } else { "" }
+          # 输出多行内容到 GITHUB_OUTPUT
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "body<<EOF"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value $body
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "EOF"
+          Write-Host "Extracted release notes length: $($body.Length)"
+
       - name: 构建并发布（tauri-action）
         uses: tauri-apps/tauri-action@v0.5.18
         env:
@@ -45,6 +60,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'SnapClaim ${{ github.ref_name }}'
+          releaseBody: ${{ steps.release_notes.outputs.body }}
           releaseDraft: false
           prerelease: false
           args: --ci

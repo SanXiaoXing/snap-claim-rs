@@ -37,23 +37,4 @@ describe("UpdateDialog", () => {
 
     expect(onLater).toHaveBeenCalledTimes(1);
   });
-
-  it("传入 progress 时显示下载百分比", () => {
-    render(
-      <UpdateDialog
-        update={update}
-        onInstall={() => {}}
-        onLater={() => {}}
-        progress={{ downloaded: 500, total: 1000 }}
-      />
-    );
-
-    expect(screen.getByText(/50%/)).toBeInTheDocument();
-  });
-
-  it("未传入 progress 时不显示百分比", () => {
-    render(<UpdateDialog update={update} onInstall={() => {}} onLater={() => {}} />);
-
-    expect(screen.queryByText(/%\s*$/)).not.toBeInTheDocument();
-  });
 });

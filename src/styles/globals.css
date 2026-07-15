@@ -317,12 +317,32 @@ body {
   100% { background-position: -200% 0; }
 }
 
+/* ===== 更新完成光晕：圆形进度条完成后的呼吸灯提示 ===== */
+.update-ready-glow {
+  animation: update-ready-pulse 2s ease-in-out infinite;
+}
+@keyframes update-ready-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 color-mix(in srgb, var(--accent) 35%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 1px 2px color-mix(in srgb, var(--fg) 5%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 14px 4px color-mix(in srgb, var(--accent) 35%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 1px 2px color-mix(in srgb, var(--fg) 5%, transparent);
+  }
+}
+
 /* ===== reduced-motion：CSS 动画降级为瞬时（GSAP 侧由 gsap.matchMedia 守卫） ===== */
 @media (prefers-reduced-motion: reduce) {
   .row-enter,
   .status-fade,
   .progress-bar-fill,
-  .drag-mask-icon {
+  .drag-mask-icon,
+  .update-ready-glow {
     animation: none !important;
   }
   .progress-bar-fill {

@@ -94,8 +94,8 @@ export interface DownloadProgressEvent {
   data?: { contentLength?: number; chunkLength?: number }
 }
 
-// 下载并安装更新，通过 Channel 接收进度，安装完成后应用自动重启
-export async function installUpdate(
+// 下载更新包，通过 Channel 接收进度；下载完成后暂存到后端，需再调用 installDownloadedUpdate 安装。
+export async function downloadUpdate(
   onProgress?: (downloaded: number, total: number | null) => void
 ): Promise<void> {
   const channel = new Channel<DownloadProgressEvent>()
@@ -119,7 +119,16 @@ export async function installUpdate(
   }
 
   try {
-    await invoke<void>('install_update', { onEvent: channel })
+    await invoke<void>('download_update', { onEvent: channel })
+  } catch (e) {
+    throw new Error(typeof e === 'string' ? e : JSON.stringify(e))
+  }
+}
+
+// 安装已下载的更新包并重启应用。
+export async function installDownloadedUpdate(): Promise<void> {
+  try {
+    await invoke<void>('install_update')
   } catch (e) {
     throw new Error(typeof e === 'string' ? e : JSON.stringify(e))
   }

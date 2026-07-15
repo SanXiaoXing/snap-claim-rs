@@ -6,7 +6,8 @@ import { DateRangeModal } from './components/DateRangeModal'
 import { AboutModal } from './components/AboutModal'
 import { CarClassifyModal } from './components/CarClassifyModal'
 import { UpdateDialog } from './components/UpdateDialog'
-import { pickPdfs, recognizeInvoices, mergePdfs, pickSavePath, exportExcel, checkForUpdate, installUpdate } from './lib/tauri'
+import { UpdateProgressWidget } from './components/UpdateProgressWidget'
+import { pickPdfs, recognizeInvoices, mergePdfs, pickSavePath, exportExcel, checkForUpdate, downloadUpdate, installDownloadedUpdate } from './lib/tauri'
 import { useGsapMount } from './lib/gsap-hooks'
 import { listen } from '@tauri-apps/api/event'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
@@ -51,6 +52,7 @@ function App() {
   // 自动更新：启动时检查一次，发现新版本弹窗
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
   const [updateProgress, setUpdateProgress] = useState<{ downloaded: number; total: number | null } | null>(null)
+  const [updateReady, setUpdateReady] = useState(false)
 
   // 添加文件（Tauri 原生文件选择对话框）
   const handleAddFiles = useCallback(async () => {
@@ -240,8 +242,13 @@ function App() {
     return () => { unlisten.then((fn) => fn()) }
   }, [])
 
-  // 手动检查更新（菜单触发）：与启动静默检查不同，需给用户明确反馈
+  // 手动检查更新（菜单触发）：与启动静默检查不同，需给用户明确反馈。
+  // 下载进行中时不重复检查，避免覆盖正在下载的更新元数据。
   const handleManualCheckUpdate = useCallback(async () => {
+    if (updateProgress) {
+      setStatus('正在下载更新中，请稍后再试')
+      return
+    }
     setStatus('正在检查更新...')
     try {
       const info = await checkForUpdate()
@@ -254,7 +261,7 @@ function App() {
     } catch (e) {
       setStatus(`检查更新失败: ${String(e)}`)
     }
-  }, [setStatus])
+  }, [setStatus, updateProgress])
 
   // 原生菜单事件分发：后端 emit id，前端按 id 路由到现有 handler
   const handlers = useRef({ handleAddFiles, handleMergePdf, handleExportReport, handleClear, handleThemeChange, setStatus, setShowAbout, handleManualCheckUpdate })
@@ -300,22 +307,37 @@ function App() {
     return () => clearTimeout(t)
   }, [])
 
-  // 点击「立即更新」：下载安装，进度驱动 UpdateDialog 的进度条，完成后后端自动重启
+  // 点击「立即更新」：关闭弹窗，后台下载更新包，进度显示在浮动组件上。
   const handleInstallUpdate = useCallback(async () => {
+    setUpdateInfo(null)
     setUpdateProgress({ downloaded: 0, total: null })
+    setUpdateReady(false)
     try {
-      await installUpdate((downloaded, total) => {
+      await downloadUpdate((downloaded, total) => {
         setUpdateProgress({ downloaded, total })
       })
+      setUpdateReady(true)
     } catch (e) {
       setStatus(`更新失败: ${String(e)}`)
       setUpdateProgress(null)
+      setUpdateReady(false)
     }
   }, [setStatus])
 
-  const handleLaterUpdate = useCallback(() => {
+  // 下载完成后点击「立即更新」：安装并重启。
+  const handleApplyUpdate = useCallback(async () => {
+    try {
+      await installDownloadedUpdate()
+    } catch (e) {
+      setStatus(`安装更新失败: ${String(e)}`)
+    }
+  }, [setStatus])
+
+  // 关闭更新提示（下载中或下载完成均可关闭，不影响当前使用）。
+  const handleDismissUpdate = useCallback(() => {
     setUpdateInfo(null)
     setUpdateProgress(null)
+    setUpdateReady(false)
   }, [])
 
   return (
@@ -372,8 +394,16 @@ function App() {
         <UpdateDialog
           update={updateInfo}
           onInstall={handleInstallUpdate}
-          onLater={handleLaterUpdate}
+          onLater={handleDismissUpdate}
+        />
+      )}
+
+      {updateProgress && (
+        <UpdateProgressWidget
           progress={updateProgress}
+          ready={updateReady}
+          onInstall={handleApplyUpdate}
+          onDismiss={handleDismissUpdate}
         />
       )}
 
