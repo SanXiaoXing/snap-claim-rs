@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "SnapClaim",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "identifier": "cn.sanxiaoxing.snap-claim",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -56,7 +56,7 @@
     "updater": {
       "active": true,
       "endpoints": [
-        "https://github.com/SanXiaoXing/snap-claim-rs/releases/latest/download/latest.json"
+        "https://update.sanxiaoxing.cn/latest.json"
       ],
       "dialog": false,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNBRjk2REFENUUxNzZFQzQKUldURWJoZGVyVzM1T2xjS0dETHE5dURBc29JZ0xyS0pNSVlQRHEydnNhOXlYT3FYazRlR3JaS0YK",

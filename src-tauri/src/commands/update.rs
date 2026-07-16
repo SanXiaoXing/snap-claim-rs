@@ -92,6 +92,8 @@ pub async fn download_update(
 
     match result {
         Ok(bytes) => {
+            // 下载成功：保留 Update 对象和安装包，供 install_update 使用
+            *pending_update.0.lock().unwrap() = Some(update);
             *pending_bytes.0.lock().unwrap() = Some(bytes);
             Ok(())
         }
