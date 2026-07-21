@@ -171,8 +171,10 @@ function App() {
       setPreviewRows(final.previewRows)
       setRecords(final.records)
 
-      const hasCars = final.records.some((r) => r.type === 'car')
-      if (hasCars) {
+      // ponytail: 只有新增了用车记录才弹分类窗；已分类过的不再打扰，全部清除后重新上传也会弹
+      const prevCarPaths = new Set(records.filter((r) => r.type === 'car').map((r) => r.fullPath))
+      const hasNewCars = final.records.some((r) => r.type === 'car' && !prevCarPaths.has(r.fullPath))
+      if (hasNewCars) {
         setCarClassifyPending(true)
         setShowCarClassify(true)
         setStatus(`识别完成，共 ${final.records.length} 条记录，请先分类用车记录`)
