@@ -133,8 +133,7 @@ pub fn recognize_from_text(
     // 终端打印订单号 + 金额，便于调试可见
     if let Some(h) = image_hint.as_ref() {
         tracing::info!(
-            "[image-ocr] 文件={} 订单号={} 类型提示={} 金额提示={:?}",
-            filename,
+            "[image-ocr] 订单号={} 类型提示={} 金额提示={:?}",
             h.order_id.as_deref().unwrap_or("(none)"),
             h.order_type.as_deref().unwrap_or("(none)"),
             h.amount,
@@ -156,22 +155,23 @@ pub fn recognize_from_text(
         image_hint.as_ref(),
     );
 
-    // 识别完成后打印最终结果
-    let amount = fields.get("amount").and_then(|v| v.as_f64());
-    tracing::info!(
-        "[image-ocr] 识别完成 文件={} 类型={} 金额={:?}",
-        filename,
-        invoice_type,
-        amount,
-    );
-
-    Ok(recognition_service::build_invoice_record(
+    let record = recognition_service::build_invoice_record(
         &fields,
         &invoice_type,
         &filename,
         &full_path,
         page_number,
-    ))
+    );
+
+    // 识别完成后打印最终结果
+    let amount = fields.get("amount").and_then(|v| v.as_f64());
+    tracing::info!(
+        "[image-ocr] 识别完成 类型={} 金额={:?}",
+        invoice_type,
+        amount,
+    );
+
+    Ok(record)
 }
 
 /// 读取图片字节：前端 ImageRecognitionService 需要 File 对象喂给 PaddleOCR.js，

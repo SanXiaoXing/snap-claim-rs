@@ -13,16 +13,19 @@ export type ParseFromText = (
   imageHint: ImageHint | null,
 ) => Promise<InvoiceRecord>;
 
-/// 图片识别编排：校验 → OCR → 业务解析（复用 Rust 解析）。
+/// 图片识别编排：校验 → OCR → 逐段业务解析（复用 Rust recognize_from_text）。
 /// 图片不做二维码识别（docs/LOCAL_OCR_SPEC.md §7.2），一张图视为第 1 页一份单据。
 /// 长截图含多个订单号时按订单号切片，每段对应一份 InvoiceRecord。
+/// 前端主导流程：PaddleOCR 出文本后，逐段调 Rust 解析，每段完成通过 onRecord 即时回调。
 export class ImageRecognitionService {
   constructor(
     private readonly ocr: OcrService,
     private readonly parse: ParseFromText,
   ) {}
 
-  async recognizeAll(file: File): Promise<InvoiceRecord[]> {
+  /// 识别图片，每识别出一个订单段就通过 onRecord 回调通知前端即时显示。
+  /// 仍返回完整记录数组，便于调用方汇总。
+  async recognizeAll(file: File, onRecord?: (record: InvoiceRecord) => void): Promise<InvoiceRecord[]> {
     validateImageInput(file);
 
     const doc = await this.ocr.recognize(file);
@@ -32,6 +35,7 @@ export class ImageRecognitionService {
     if (segments.length === 0) {
       // 无订单号 → 整张图作为一份，imageHint=null（让 Rust 走关键词路径）
       const record = await this.parse(doc.rawText, file.name, file.name, 1, null);
+      onRecord?.(record);
       return [record];
     }
 
@@ -45,6 +49,7 @@ export class ImageRecognitionService {
         );
       }
       const record = await this.parse(seg, file.name, file.name, 1, imageHint);
+      onRecord?.(record);
       records.push(record);
     }
     return records;

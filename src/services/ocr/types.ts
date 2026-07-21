@@ -47,9 +47,7 @@ export interface RawOcrResult {
 // —— OCR 错误模型（docs/LOCAL_OCR_SPEC.md §25）——
 export enum OcrErrorCode {
   InitializationFailed = "initialization_failed",
-  ModelNotFound = "model_not_found",
   InvalidInput = "invalid_input",
-  ImageDecodeFailed = "image_decode_failed",
   InferenceFailed = "inference_failed",
   ResultParseFailed = "result_parse_failed",
 }

@@ -107,7 +107,7 @@ function App() {
     try {
       let accumulated = records
 
-      // 1. PDF 走 Rust 批量识别（进度 + 单条推送由后端 emit）
+      // 1. PDF 走 Rust 批量识别（进度 + 单条推送由后端 emit recognition://record）
       if (newPdfs.length > 0) {
         const pdfResult = await recognizeInvoices(
           newPdfs,
@@ -125,19 +125,33 @@ function App() {
         setRecords(accumulated)
       }
 
-      // 2. 图片走前端 OCR 逐张识别（Worker 模式不阻塞 UI）；长截图多订单会返回多份记录
+      // 2. 图片走前端 OCR 逐张识别；前端主导流程——PaddleOCR 出文本后逐段调 Rust 解析，
+      //    每段完成通过 onRecord 回调即时更新 UI，用户能看到记录逐条出现
       if (newImages.length > 0) {
         const imageService = await getImageRecognition()
+        // debounce 150ms 重算汇总，避免每条记录都触发 Rust invoke
+        let recalcTimer: ReturnType<typeof setTimeout> | null = null
+        const scheduleRecalc = () => {
+          if (recalcTimer) clearTimeout(recalcTimer)
+          recalcTimer = setTimeout(async () => {
+            try {
+              const result = await recognizeInvoices([], days, recordsRef.current)
+              setTotals(result.totals)
+              setPreviewRows(result.previewRows)
+            } catch { /* 非关键，忽略 */ }
+          }, 150)
+        }
         for (let i = 0; i < newImages.length; i++) {
           const imgPath = newImages[i]
           const filename = imgPath.split(/[\\/]/).pop() ?? imgPath
           try {
             const bytes = await readImageBytes(imgPath)
             const file = new File([bytes], filename, { type: mimeFromExt(imgPath) })
-            // 一张长截图可能含多个订单 → recognizeAll 返回多份 InvoiceRecord
-            const records = await imageService.recognizeAll(file)
-            accumulated = [...accumulated, ...records]
-            setRecords(accumulated)
+            // onRecord：每段 Rust 解析完成后立即追加到 records，UI 即时可见
+            await imageService.recognizeAll(file, (record) => {
+              setRecords((prev) => [...prev, record])
+              scheduleRecalc()
+            })
           } catch (e) {
             // 单张图片失败不中断整批，记录错误状态继续
             console.error(`图片识别失败 ${filename}:`, e)
@@ -145,12 +159,15 @@ function App() {
           }
           setProgress((newPdfs.length || 0) + i + 1)
         }
+        // 清理 debounce 定时器
+        if (recalcTimer) clearTimeout(recalcTimer)
       }
 
       // 3. 全量重算汇总/预览（空文件路径走 Rust 重算路径）
-      const final = await recognizeInvoices([], days, accumulated)
+      const final = await recognizeInvoices([], days, recordsRef.current)
       setTotals(final.totals)
       setPreviewRows(final.previewRows)
+      setRecords(final.records)
 
       const hasCars = final.records.some((r) => r.type === 'car')
       if (hasCars) {

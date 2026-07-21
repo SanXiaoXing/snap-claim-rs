@@ -31,16 +31,14 @@ pub enum DownloadProgressEvent {
     Finished,
 }
 
-pub struct PendingUpdate(pub Mutex<Option<Update>>);
-
-/// 已下载的更新包二进制数据，供用户确认后再安装。
-pub struct PendingUpdateBytes(pub Mutex<Option<Vec<u8>>>);
+/// 已下载的更新数据：Update 对象 + 安装包二进制，供用户确认后再安装。
+pub struct PendingDownload(pub Mutex<Option<(Update, Vec<u8>)>>);
 
 /// 检查是否有新版本。返回 None 表示已是最新。
 #[command]
 pub async fn check_for_update(
     app: AppHandle,
-    pending_update: State<'_, PendingUpdate>,
+    pending: State<'_, PendingDownload>,
 ) -> Result<Option<UpdateInfo>, AppError> {
     let updater = app.updater().map_err(|e| AppError::Updater(e.to_string()))?;
     let update = updater
@@ -48,8 +46,10 @@ pub async fn check_for_update(
         .await
         .map_err(|e| AppError::Updater(e.to_string()))?;
 
-    // 存储 pending update 供后续下载/安装
-    *pending_update.0.lock().unwrap() = update.clone();
+    // 存储 pending update 供后续下载
+    if let Some(u) = &update {
+        *pending.0.lock().unwrap() = Some((u.clone(), Vec::new()));
+    }
 
     Ok(update.map(|u| UpdateInfo {
         version: u.version.clone(),
@@ -62,11 +62,10 @@ pub async fn check_for_update(
 /// 用户确认后再调用 install_update 执行安装并重启。
 #[command]
 pub async fn download_update(
-    pending_update: State<'_, PendingUpdate>,
-    pending_bytes: State<'_, PendingUpdateBytes>,
+    pending: State<'_, PendingDownload>,
     on_event: Channel<DownloadProgressEvent>,
 ) -> Result<(), AppError> {
-    let update = pending_update
+    let (update, _) = pending
         .0
         .lock()
         .unwrap()
@@ -92,14 +91,12 @@ pub async fn download_update(
 
     match result {
         Ok(bytes) => {
-            // 下载成功：保留 Update 对象和安装包，供 install_update 使用
-            *pending_update.0.lock().unwrap() = Some(update);
-            *pending_bytes.0.lock().unwrap() = Some(bytes);
+            *pending.0.lock().unwrap() = Some((update, bytes));
             Ok(())
         }
         Err(e) => {
             // 下载失败把 Update 放回去，允许再次下载
-            *pending_update.0.lock().unwrap() = Some(update);
+            *pending.0.lock().unwrap() = Some((update, Vec::new()));
             Err(AppError::Updater(e.to_string()))
         }
     }
@@ -108,23 +105,19 @@ pub async fn download_update(
 /// 安装已下载的更新包并重启应用。
 #[command]
 pub async fn install_update(
-    pending_update: State<'_, PendingUpdate>,
-    pending_bytes: State<'_, PendingUpdateBytes>,
+    pending: State<'_, PendingDownload>,
     app: AppHandle,
 ) -> Result<(), AppError> {
-    let update = pending_update
+    let (update, bytes) = pending
         .0
         .lock()
         .unwrap()
         .take()
         .ok_or(UpdateError::NoPendingUpdate)?;
 
-    let bytes = pending_bytes
-        .0
-        .lock()
-        .unwrap()
-        .take()
-        .ok_or(UpdateError::NoDownloadedPackage)?;
+    if bytes.is_empty() {
+        return Err(UpdateError::NoDownloadedPackage.into());
+    }
 
     update
         .install(&bytes)

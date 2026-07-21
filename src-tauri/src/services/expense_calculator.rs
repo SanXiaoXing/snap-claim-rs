@@ -5,10 +5,10 @@ pub const SUBSIDY_PER_DAY: f64 = 100.0;
 
 /// 计算费用汇总
 pub fn calc_totals(results: &[InvoiceRecord], days: u32) -> Totals {
-    let train = sum_by_type(results, "train");
-    let flight = sum_by_type(results, "flight");
-    let hotel = sum_by_type(results, "hotel");
-    let invoice = sum_by_type(results, "invoice");
+    let train = sum_amounts(results, "train");
+    let flight = sum_amounts(results, "flight");
+    let hotel = sum_amounts(results, "hotel");
+    let invoice = sum_amounts(results, "invoice");
 
     // ponytail: 用车记录按 is_round_trip 拆成市内 / 往返两类。
     // 旧记录无该字段时 serde default=false，全部归市内，行为与重构前一致。
@@ -50,12 +50,12 @@ pub fn build_preview_rows(results: &[InvoiceRecord], days: u32) -> Vec<PreviewRo
     let round_trip_data: Vec<_> = results.iter().filter(|r| r.kind == "car" && r.is_round_trip).collect();
     let invoice_data: Vec<_> = results.iter().filter(|r| r.kind == "invoice").collect();
 
-    let train_total = sum_records(&train_data);
-    let flight_total = sum_records(&flight_data);
-    let hotel_total = sum_records(&hotel_data);
-    let car_total = sum_records(&car_data);
-    let round_trip_total = sum_records(&round_trip_data);
-    let invoice_total = sum_records(&invoice_data);
+    let train_total: f64 = train_data.iter().filter_map(|r| r.amount).sum();
+    let flight_total: f64 = flight_data.iter().filter_map(|r| r.amount).sum();
+    let hotel_total: f64 = hotel_data.iter().filter_map(|r| r.amount).sum();
+    let car_total: f64 = car_data.iter().filter_map(|r| r.amount).sum();
+    let round_trip_total: f64 = round_trip_data.iter().filter_map(|r| r.amount).sum();
+    let invoice_total: f64 = invoice_data.iter().filter_map(|r| r.amount).sum();
 
     let subsidy_total = days as f64 * SUBSIDY_PER_DAY;
     let mut rows = Vec::new();
@@ -148,16 +148,12 @@ pub fn build_preview_rows(results: &[InvoiceRecord], days: u32) -> Vec<PreviewRo
     rows
 }
 
-fn sum_by_type(results: &[InvoiceRecord], kind: &str) -> f64 {
-    results
+fn sum_amounts(records: &[InvoiceRecord], kind: &str) -> f64 {
+    records
         .iter()
         .filter(|r| r.kind == kind)
         .filter_map(|r| r.amount)
         .sum()
-}
-
-fn sum_records(records: &[&InvoiceRecord]) -> f64 {
-    records.iter().filter_map(|r| r.amount).sum()
 }
 
 #[cfg(test)]

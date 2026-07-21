@@ -64,24 +64,16 @@ fn write_cell(
     let res: Result<(), rust_xlsxwriter::XlsxError> = (|| {
         if let Some(s) = cell.as_str() {
             match fmt {
-                Some(f) => {
-                    ws.write_with_format(row, col, s, f)?;
-                }
-                None => {
-                    ws.write_string(row, col, s)?;
-                }
-            }
+                Some(f) => ws.write_with_format(row, col, s, f)?,
+                None => ws.write(row, col, s)?,
+            };
         } else if let Some(n) = cell.as_f64() {
             match fmt {
-                Some(f) => {
-                    ws.write_with_format(row, col, n, f)?;
-                }
-                None => {
-                    ws.write_number(row, col, n)?;
-                }
-            }
+                Some(f) => ws.write_with_format(row, col, n, f)?,
+                None => ws.write(row, col, n)?,
+            };
         } else {
-            ws.write_string(row, col, "")?;
+            ws.write(row, col, "")?;
         }
         Ok(())
     })();

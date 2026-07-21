@@ -7,7 +7,7 @@ mod utils;
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::Emitter;
-use commands::update::{PendingUpdate, PendingUpdateBytes};
+use commands::update::PendingDownload;
 use std::sync::Mutex;
 
 /// 从命令行参数中提取文件路径（PDF + 图片），emit 给前端
@@ -47,8 +47,7 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             emit_file_args(app, &argv);
         }))
-        .manage(PendingUpdate(Mutex::new(None)))
-        .manage(PendingUpdateBytes(Mutex::new(None)))
+        .manage(PendingDownload(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             commands::recognition::recognize_invoices,
             commands::recognition::recognize_from_text,
