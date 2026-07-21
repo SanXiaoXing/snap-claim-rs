@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { getVersion } from '@tauri-apps/api/app'
+import { open } from '@tauri-apps/plugin-shell'
 import { gsap } from 'gsap'
+import VERSION_HISTORY from '../version-history.json'
+
+// ponytail: Tauri shell plugin 的 open() API 打开外部链接
+const openExternal = (url: string) => {
+  open(url).catch((err: unknown) => console.error('打开链接失败:', err))
+}
 
 interface AboutModalProps {
   open: boolean
@@ -10,6 +17,7 @@ interface AboutModalProps {
 export function AboutModal({ open, onClose }: AboutModalProps) {
   const contentRef = useRef<HTMLDivElement>(null)
   const [version, setVersion] = useState('')
+  const [showHistory, setShowHistory] = useState(false)
 
   useEffect(() => {
     if (open && contentRef.current) {
@@ -53,29 +61,79 @@ export function AboutModal({ open, onClose }: AboutModalProps) {
           >
             SnapClaim
           </h1>
-          <a
-            href="https://github.com/SanXiaoXing"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm opacity-60 mt-1 transition-all duration-200 hover:opacity-100 hover:underline"
+          <button
+            onClick={() => openExternal('https://github.com/SanXiaoXing')}
+            className="text-sm opacity-60 mt-1 transition-all duration-200 hover:opacity-100 hover:underline cursor-pointer"
             style={{ color: 'var(--accent)' }}
           >
             by SanXiaoXing
-          </a>
+          </button>
         </div>
 
         {/* 版本居中 + 仓库链接 */}
-        <div className="text-sm mb-5 text-center">
-          <a
-            href="https://github.com/SanXiaoXing/snap-claim-rs"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="transition-all duration-200 hover:underline"
+        <div className="text-sm mb-2 text-center">
+          <button
+            onClick={() => openExternal('https://github.com/SanXiaoXing/snap-claim-rs')}
+            className="transition-all duration-200 hover:underline cursor-pointer"
             style={{ color: 'var(--fg-muted)' }}
           >
             Version {version || '...'}
-          </a>
+          </button>
         </div>
+
+        {/* 版本历史链接 */}
+        <div className="text-center mb-4">
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="text-xs opacity-60 hover:opacity-100 transition-all duration-200 hover:underline"
+            style={{ color: 'var(--accent)' }}
+          >
+            {showHistory ? '隐藏版本历史' : '查看版本历史'}
+          </button>
+        </div>
+
+        {/* 版本历史展开区域 */}
+        {showHistory && (
+          <div className="mb-5 max-h-48 overflow-y-auto text-xs leading-relaxed px-2" style={{ color: 'var(--fg-muted)' }}>
+            {VERSION_HISTORY.slice(0, 3).map((v, idx) => (
+              <div key={v.version} className="mb-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-medium" style={{ color: 'var(--fg)' }}>v{v.version}</span>
+                  {idx === 0 && (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-medium" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' }}>
+                      当前
+                    </span>
+                  )}
+                  {idx > 0 && (
+                    <button
+                      onClick={() => openExternal(`https://github.com/SanXiaoXing/snap-claim-rs/releases/download/v${v.version}/SnapClaim_${v.version}_x64-setup.exe`)}
+                      className="opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
+                      style={{ color: 'var(--accent)' }}
+                    >
+                      下载
+                    </button>
+                  )}
+                </div>
+                <ul className="ml-3 space-y-0.5">
+                  {v.changes.map((change, i) => (
+                    <li key={i} className="opacity-70">- {change}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+            {VERSION_HISTORY.length > 3 && (
+              <div className="mt-3 pt-2 border-t border-[var(--border)]">
+                <button
+                  onClick={() => openExternal('https://github.com/SanXiaoXing/snap-claim-rs/releases')}
+                  className="opacity-60 hover:opacity-100 transition-opacity text-xs cursor-pointer"
+                  style={{ color: 'var(--accent)' }}
+                >
+                  查看更多版本 →
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 描述：幽默 + 功能 */}
         <div

@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# 构建产物：从 RELEASE_NOTES.md 自动生成
+src/version-history.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -66,3 +66,9 @@ export interface UpdateInfo {
   notes: string
   pubDate?: string
 }
+
+// 版本历史（由 scripts/generate-version-history.js 从 RELEASE_NOTES.md 生成）
+export interface VersionHistory {
+  version: string
+  changes: string[]
+}
