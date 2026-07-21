@@ -139,7 +139,7 @@ function App() {
               const result = await recognizeInvoices([], days, currentRecords)
               setTotals(result.totals)
               setPreviewRows(result.previewRows)
-            } catch { /* 非关键，忽略 */ }
+            } catch (e) { console.warn('debounce 重算汇总失败:', e) }
           }, 150)
         }
         for (let i = 0; i < newImages.length; i++) {
@@ -201,7 +201,7 @@ function App() {
       const result = await recognizeInvoices([], days, keptRecords)
       setTotals(result.totals)
       setPreviewRows(result.previewRows)
-    } catch { /* 非关键 */ }
+    } catch (e) { console.warn('删除后重算汇总失败:', e) }
     setStatus(`已删除 ${indices.size} 个文件`)
   }, [files, records, days])
 
