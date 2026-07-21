@@ -11,7 +11,7 @@ use std::collections::HashMap;
 pub struct ImageHint {
     /// 前端从订单号推断的类型："car" / "flight" / "hotel"
     pub order_type: Option<String>,
-    /// 订单号本体（DC/DF/DH + 数字），仅记录/调试用
+    /// 订单号本体（DC/DF/HO + 数字），仅记录/调试用
     #[allow(dead_code)]
     pub order_id: Option<String>,
     /// 末行 ¥xxx.xx 金额（OCR 文本提取不到时由前端补强）

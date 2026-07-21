@@ -13,7 +13,7 @@ export interface ImageHint {
 const ORDER_TYPE_BY_PREFIX: Record<string, ImageOrderType> = {
   DC: "car",
   DF: "flight",
-  DH: "hotel",
+  HO: "hotel",
 };
 
 const ORDER_RE = /\b([A-Z]{2})(\d{14,22})\b/g;
