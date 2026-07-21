@@ -189,12 +189,21 @@ function App() {
     }
   }, [files, days, records])
 
-  // 删除选中
-  const handleDeleteSelected = useCallback((indices: Set<number>) => {
+  // 删除选中：同时移除对应 records 并重算汇总
+  const handleDeleteSelected = useCallback(async (indices: Set<number>) => {
     if (indices.size === 0) return
-    setFiles((prev) => prev.filter((_, i) => !indices.has(i)))
+    const deletedPaths = new Set(files.filter((_, i) => indices.has(i)))
+    const keptFiles = files.filter((_, i) => !indices.has(i))
+    const keptRecords = records.filter((r) => !deletedPaths.has(r.fullPath))
+    setFiles(keptFiles)
+    setRecords(keptRecords)
+    try {
+      const result = await recognizeInvoices([], days, keptRecords)
+      setTotals(result.totals)
+      setPreviewRows(result.previewRows)
+    } catch { /* 非关键 */ }
     setStatus(`已删除 ${indices.size} 个文件`)
-  }, [])
+  }, [files, records, days])
 
   // 清空
   const handleClear = useCallback(() => {

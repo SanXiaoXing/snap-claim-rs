@@ -35,7 +35,7 @@ export function LeftPanel({
   files: string[]
   records: InvoiceRecord[]
   onAddFiles: () => void
-  onDeleteSelected: (indices: Set<number>) => void
+  onDeleteSelected: (indices: Set<number>) => Promise<void>
   onClear: () => void
   onStartRecognition: () => void
   isRecognizing: boolean
