@@ -25,7 +25,7 @@ export class ImageRecognitionService {
 
   /// 识别图片，每识别出一个订单段就通过 onRecord 回调通知前端即时显示。
   /// 仍返回完整记录数组，便于调用方汇总。
-  async recognizeAll(file: File, onRecord?: (record: InvoiceRecord) => void): Promise<InvoiceRecord[]> {
+  async recognizeAll(file: File, fullPath: string, onRecord?: (record: InvoiceRecord) => void): Promise<InvoiceRecord[]> {
     validateImageInput(file);
 
     const doc = await this.ocr.recognize(file);
@@ -33,8 +33,7 @@ export class ImageRecognitionService {
     // 长截图多订单切片：按订单号行分界，每段对应一张订单卡片
     const segments = splitOrderSegments(doc.rawText);
     if (segments.length === 0) {
-      // 无订单号 → 整张图作为一份，imageHint=null（让 Rust 走关键词路径）
-      const record = await this.parse(doc.rawText, file.name, file.name, 1, null);
+      const record = await this.parse(doc.rawText, file.name, fullPath, 1, null);
       onRecord?.(record);
       return [record];
     }
@@ -42,13 +41,12 @@ export class ImageRecognitionService {
     const records: InvoiceRecord[] = [];
     for (const seg of segments) {
       const imageHint = extractImageHint(seg);
-      // 终端打印订单号 + 金额，便于调试可见
       if (imageHint) {
         console.log(
           `[image-ocr] 订单号=${imageHint.orderId} 类型=${imageHint.orderType} 金额=${imageHint.amount ?? "null"}`,
         );
       }
-      const record = await this.parse(seg, file.name, file.name, 1, imageHint);
+      const record = await this.parse(seg, file.name, fullPath, 1, imageHint);
       onRecord?.(record);
       records.push(record);
     }

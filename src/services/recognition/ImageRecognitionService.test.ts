@@ -35,11 +35,11 @@ describe("ImageRecognitionService", () => {
     const svc = new ImageRecognitionService(ocr, parse);
 
     const file = new File([new Uint8Array(1024)], "inv.png", { type: "image/png" });
-    const records = await svc.recognizeAll(file);
+    const records = await svc.recognizeAll(file, "/path/to/inv.png");
 
     expect(ocr.recognize).toHaveBeenCalledWith(file);
     // 解析拿到 OCR 的 rawText + 文件名；图片视为第 1 页；文本无订单号 → imageHint=null
-    expect(parse).toHaveBeenCalledWith("价税合计：150.00元", "inv.png", "inv.png", 1, null);
+    expect(parse).toHaveBeenCalledWith("价税合计：150.00元", "inv.png", "/path/to/inv.png", 1, null);
     expect(records).toEqual([sampleRecord]);
   });
 
@@ -49,7 +49,7 @@ describe("ImageRecognitionService", () => {
     const svc = new ImageRecognitionService(ocr, parse);
 
     const tooBig = new File([new Uint8Array(11 * 1024 * 1024)], "big.png", { type: "image/png" });
-    await expect(svc.recognizeAll(tooBig)).rejects.toMatchObject({ code: OcrErrorCode.InvalidInput });
+    await expect(svc.recognizeAll(tooBig, "/path/to/big.png")).rejects.toMatchObject({ code: OcrErrorCode.InvalidInput });
     expect(ocr.recognize).not.toHaveBeenCalled();
     expect(parse).not.toHaveBeenCalled();
   });
@@ -64,7 +64,7 @@ describe("ImageRecognitionService", () => {
     const svc = new ImageRecognitionService(ocr, parse);
 
     const file = new File([new Uint8Array(1024)], "inv.png", { type: "image/png" });
-    await expect(svc.recognizeAll(file)).rejects.toMatchObject({ code: OcrErrorCode.InferenceFailed });
+    await expect(svc.recognizeAll(file, "/path/to/inv.png")).rejects.toMatchObject({ code: OcrErrorCode.InferenceFailed });
     expect(parse).not.toHaveBeenCalled();
   });
 
@@ -78,12 +78,12 @@ describe("ImageRecognitionService", () => {
     const svc = new ImageRecognitionService(ocr, parse);
 
     const file = new File([new Uint8Array(1024)], "car.png", { type: "image/png" });
-    await svc.recognizeAll(file);
+    await svc.recognizeAll(file, "/path/to/car.png");
 
     expect(parse).toHaveBeenCalledWith(
       docWithOrder.rawText,
       "car.png",
-      "car.png",
+      "/path/to/car.png",
       1,
       { orderType: "car", orderId: "DC26070912345678901234", amount: 150 },
     );
@@ -112,14 +112,14 @@ describe("ImageRecognitionService", () => {
     const svc = new ImageRecognitionService(ocr, parse);
 
     const file = new File([new Uint8Array(1024)], "multi.png", { type: "image/png" });
-    const records = await svc.recognizeAll(file);
+    const records = await svc.recognizeAll(file, "/path/to/multi.png");
 
     expect(parse).toHaveBeenCalledTimes(2);
     expect(parse).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining("DC26070912345678901234"),
       "multi.png",
-      "multi.png",
+      "/path/to/multi.png",
       1,
       { orderType: "car", orderId: "DC26070912345678901234", amount: 150 },
     );
@@ -127,7 +127,7 @@ describe("ImageRecognitionService", () => {
       2,
       expect.stringContaining("DH26070955556666777788"),
       "multi.png",
-      "multi.png",
+      "/path/to/multi.png",
       1,
       { orderType: "hotel", orderId: "DH26070955556666777788", amount: 152 },
     );

@@ -105,24 +105,25 @@ function App() {
     setStatus(newFiles.length > 0 ? `正在识别 ${newFiles.length} 个新文件...` : '正在重新计算汇总...')
 
     try {
-      let accumulated = records
+      // ponytail: 用局部变量追踪最新 records，避免依赖 React 重渲染更新 recordsRef.current
+      let currentRecords = records
 
       // 1. PDF 走 Rust 批量识别（进度 + 单条推送由后端 emit recognition://record）
       if (newPdfs.length > 0) {
         const pdfResult = await recognizeInvoices(
           newPdfs,
           days,
-          accumulated,
+          currentRecords,
           (cur, total) => {
             setProgress(cur)
             setProgressTotal(total)
           },
           (_record) => {
-            // 增量推送仅做 UI 反馈，accumulated 由 pdfResult.records 统一对齐
+            // 增量推送仅做 UI 反馈，currentRecords 由 pdfResult.records 统一对齐
           },
         )
-        accumulated = pdfResult.records
-        setRecords(accumulated)
+        currentRecords = pdfResult.records
+        setRecords(currentRecords)
       }
 
       // 2. 图片走前端 OCR 逐张识别；前端主导流程——PaddleOCR 出文本后逐段调 Rust 解析，
@@ -135,7 +136,7 @@ function App() {
           if (recalcTimer) clearTimeout(recalcTimer)
           recalcTimer = setTimeout(async () => {
             try {
-              const result = await recognizeInvoices([], days, recordsRef.current)
+              const result = await recognizeInvoices([], days, currentRecords)
               setTotals(result.totals)
               setPreviewRows(result.previewRows)
             } catch { /* 非关键，忽略 */ }
@@ -148,8 +149,9 @@ function App() {
             const bytes = await readImageBytes(imgPath)
             const file = new File([bytes], filename, { type: mimeFromExt(imgPath) })
             // onRecord：每段 Rust 解析完成后立即追加到 records，UI 即时可见
-            await imageService.recognizeAll(file, (record) => {
-              setRecords((prev) => [...prev, record])
+            await imageService.recognizeAll(file, imgPath, (record) => {
+              currentRecords = [...currentRecords, record]
+              setRecords(currentRecords)
               scheduleRecalc()
             })
           } catch (e) {
@@ -164,7 +166,7 @@ function App() {
       }
 
       // 3. 全量重算汇总/预览（空文件路径走 Rust 重算路径）
-      const final = await recognizeInvoices([], days, recordsRef.current)
+      const final = await recognizeInvoices([], days, currentRecords)
       setTotals(final.totals)
       setPreviewRows(final.previewRows)
       setRecords(final.records)
