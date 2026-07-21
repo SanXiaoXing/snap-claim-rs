@@ -63,15 +63,15 @@ export function LeftPanel({
     <div className="w-[340px] flex flex-col gap-4 p-4">
       {/* 文件上传区 */}
       <section className="mac-card p-4 gsap-enter">
-        <h2 className="font-bold mb-2">上传 PDF 文件</h2>
+        <h2 className="font-bold mb-2">上传文件</h2>
         <p className="text-sm text-[var(--fg-muted)] mb-4">
-          选择包含高铁票、酒店或用车确认单的 PDF 文件
+          选择 PDF 或图片（PNG/JPG/WEBP/BMP）文件，支持高铁票、酒店、用车确认单
         </p>
         <button
           className="btn-secondary w-full"
           onClick={onAddFiles}
         >
-          添加 PDF 文件
+          添加文件
         </button>
 
         {/* 文件列表 */}

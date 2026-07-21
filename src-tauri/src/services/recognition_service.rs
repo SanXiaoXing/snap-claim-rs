@@ -1,15 +1,45 @@
 use crate::config::RulesConfig;
+use crate::models::InvoiceRecord;
 use regex::Regex;
+use serde::Deserialize;
 use std::collections::HashMap;
+
+/// 图片识别时由前端传入的提示信息（App 订单列表截图：订单号前缀即类型，末行金额即金额）。
+/// 仅当 `recognize_from_text` 收到时生效，PDF 路径不传。
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageHint {
+    /// 前端从订单号推断的类型："car" / "flight" / "hotel"
+    pub order_type: Option<String>,
+    /// 订单号本体（DC/DF/DH + 数字），仅记录/调试用
+    #[allow(dead_code)]
+    pub order_id: Option<String>,
+    /// 末行 ¥xxx.xx 金额（OCR 文本提取不到时由前端补强）
+    pub amount: Option<f64>,
+}
 
 /// 判断发票类型
 ///
 /// 决策流程：
-/// 1. 文本含「确认函」→ 扫描二维码获取具体类型（etrip://=机票, etripHotel://=酒店, etripCar://=用车）
-/// 2. 文本不含「确认函」→ 按固定顺序匹配文本关键词（train, flight, hotel, car, invoice）
+/// 1. `image_hint` 提供了 `order_type` → 直接采用（订单号前缀 DC/DF/DH 最权威）
+/// 2. 文本含「确认函」→ 扫描二维码获取具体类型（etrip://=机票, etripHotel://=酒店, etripCar://=用车）
+/// 3. 文本不含「确认函」→ 按固定顺序匹配文本关键词（train, flight, hotel, car, invoice）
 ///
 /// 返回 (type, from_qr)
-pub fn detect_invoice_type(text: &str, qr_codes: &[String], rules: &RulesConfig) -> (String, bool) {
+pub fn detect_invoice_type(
+    text: &str,
+    qr_codes: &[String],
+    rules: &RulesConfig,
+    image_hint: Option<&ImageHint>,
+) -> (String, bool) {
+    // ponytail: 图片识别优先——订单号前缀比文本关键词更准，避免「酒店」误匹配到「酒店预订人」之类。
+    if let Some(hint) = image_hint {
+        if let Some(kind) = &hint.order_type {
+            tracing::info!("[detect] image_hint 订单号 → {kind}");
+            return (kind.clone(), false);
+        }
+    }
+
     let is_confirmation = text.contains("确认函");
 
     if is_confirmation {
@@ -55,6 +85,7 @@ pub fn extract_fields(
     from_qr: bool,
     qr_codes: &[String],
     rules: &RulesConfig,
+    image_hint: Option<&ImageHint>,
 ) -> HashMap<String, serde_json::Value> {
     use serde_json::{json, Value};
 
@@ -115,7 +146,7 @@ pub fn extract_fields(
         }
     }
 
-    // 金额提取：确认函类型由 QR 确定 → 用 QR 金额；否则用文本正则
+    // 金额提取：优先级 QR > image_hint（末行）> 文本正则
     let qr_amount = if from_qr {
         extract_amount_from_qr(qr_codes, invoice_type)
     } else {
@@ -126,6 +157,12 @@ pub fn extract_fields(
         result.insert("amount".into(), json!(amount));
         result.insert("qrAmount".into(), json!(true));
         tracing::info!("[extract] 从二维码提取金额: {amount} ({invoice_type})");
+    } else if let Some(hint_amount) = image_hint.and_then(|h| h.amount) {
+        // ponytail: 末行 ¥xxx.xx 优先于文本正则——App 订单列表截图的金额位置固定，
+        // 文本正则（"价税合计"等）匹配不到。仍走非 QR 路径，不标 qrAmount。
+        result.insert("amount".into(), json!(hint_amount));
+        result.insert("qrAmount".into(), json!(false));
+        tracing::info!("[extract] 从 image_hint 末行提取金额: {hint_amount} ({invoice_type})");
     } else {
         let text_amount = extract_amount(text);
         if let Some(amount) = text_amount {
@@ -138,6 +175,92 @@ pub fn extract_fields(
     }
 
     result
+}
+
+/// 从已提取字段构建 InvoiceRecord。PDF 逐页识别与图片 OCR 文本识别共用。
+/// 图片输入无二维码（docs/LOCAL_OCR_SPEC.md §7.2），qr_codes 传空即可。
+pub fn build_invoice_record(
+    fields: &HashMap<String, serde_json::Value>,
+    invoice_type: &str,
+    filename: &str,
+    full_path: &str,
+    page_number: u32,
+) -> InvoiceRecord {
+    InvoiceRecord {
+        kind: invoice_type.to_string(),
+        amount: fields.get("amount").and_then(|v| v.as_f64()),
+        qr_amount: fields
+            .get("qrAmount")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false),
+        filename: filename.to_string(),
+        full_path: full_path.to_string(),
+        page_number,
+        train_number: fields
+            .get("train_number")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        departure_station: fields
+            .get("departure_station")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        arrival_station: fields
+            .get("arrival_station")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        departure_time: fields
+            .get("departure_time")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        hotel_name: fields
+            .get("hotel_name")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        check_in_date: fields
+            .get("check_in_date")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        check_out_date: fields
+            .get("check_out_date")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        nights: fields.get("nights").and_then(|v| v.as_u64()).map(|n| n as u32),
+        car_date: fields
+            .get("car_date")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        mileage: fields.get("mileage").and_then(|v| v.as_f64()),
+        flight_number: fields
+            .get("flight_number")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        departure_city: fields
+            .get("departure_city")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        arrival_city: fields
+            .get("arrival_city")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        flight_date: fields
+            .get("flight_date")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        invoice_code: fields
+            .get("invoice_code")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        invoice_number: fields
+            .get("invoice_number")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        issue_date: fields
+            .get("issue_date")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        // ponytail: 新建 car 记录默认市内交通，由前端批量分类弹窗改 is_round_trip
+        is_round_trip: false,
+    }
 }
 
 /// 从二维码内容中提取同程商旅用车/住宿/飞机金额

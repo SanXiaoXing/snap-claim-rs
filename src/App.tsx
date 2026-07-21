@@ -8,11 +8,12 @@ import { CarClassifyModal } from './components/CarClassifyModal'
 import { MergePdfModal } from './components/MergePdfModal'
 import { UpdateDialog } from './components/UpdateDialog'
 import { UpdateProgressWidget } from './components/UpdateProgressWidget'
-import { pickPdfs, recognizeInvoices, mergePdfs, pickSavePath, exportExcel, checkForUpdate, downloadUpdate, installDownloadedUpdate } from './lib/tauri'
+import { pickFiles, recognizeInvoices, recognizeFromText, readImageBytes, mimeFromExt, isImagePath, isPdfPath, mergePdfs, pickSavePath, exportExcel, checkForUpdate, downloadUpdate, installDownloadedUpdate } from './lib/tauri'
 import { useGsapMount } from './lib/gsap-hooks'
 import { listen } from '@tauri-apps/api/event'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import type { InvoiceRecord, Totals, PreviewRow, UpdateInfo } from './types'
+import type { ImageRecognitionService } from './services/recognition/ImageRecognitionService'
 
 const EMPTY_TOTALS: Totals = {
   train: 0, flight: 0, hotel: 0, car: 0, invoice: 0,
@@ -51,14 +52,32 @@ function App() {
   const mainRef = useRef<HTMLElement>(null)
   useGsapMount(mainRef, '.gsap-enter', 0.08)
 
+  // ponytail: 图片识别服务懒加载——PaddleOCR.js 体积大且依赖 ONNX/OpenCV 运行时，
+  // 动态 import 确保应用启动时不加载它，只在用户首次识别图片时才加载。
+  // Worker 模式下 OCR 推理在独立线程，不阻塞 UI。
+  const imageRecognitionRef = useRef<ImageRecognitionService | null>(null)
+  const getImageRecognition = useCallback(async () => {
+    if (imageRecognitionRef.current === null) {
+      const [{ ImageRecognitionService }, { PaddleOcrService }] = await Promise.all([
+        import('./services/recognition/ImageRecognitionService'),
+        import('./services/ocr/PaddleOcrService'),
+      ])
+      imageRecognitionRef.current = new ImageRecognitionService(
+        new PaddleOcrService(),
+        recognizeFromText,
+      )
+    }
+    return imageRecognitionRef.current
+  }, [])
+
   // 自动更新：启动时检查一次，发现新版本弹窗
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
   const [updateProgress, setUpdateProgress] = useState<{ downloaded: number; total: number | null } | null>(null)
   const [updateReady, setUpdateReady] = useState(false)
 
-  // 添加文件（Tauri 原生文件选择对话框）
+  // 添加文件（Tauri 原生文件选择对话框，支持 PDF + 图片）
   const handleAddFiles = useCallback(async () => {
-    const selected = await pickPdfs()
+    const selected = await pickFiles()
     if (selected.length === 0) return
     setFiles((prev) => {
       const newFiles = selected.filter((f) => !prev.includes(f))
@@ -67,17 +86,18 @@ function App() {
     setStatus(`已添加 ${files.length + selected.length} 个文件，点击「开始识别」`)
   }, [files.length])
 
-  // 开始识别（调用 Rust 后端）
+  // 开始识别：按扩展名分流——PDF 走 Rust recognizeInvoices，图片走前端 OCR + recognizeFromText。
+  // ponytail: 两条路径产物都是 InvoiceRecord，用局部变量 accumulated 累积，最后一次性重算汇总。
   const handleStartRecognition = useCallback(async () => {
     if (files.length === 0) {
-      setStatus('请先上传 PDF 文件')
+      setStatus('请先上传 PDF 或图片文件')
       return
     }
 
-    // ponytail: 增量识别——只把「未识别过」的文件发给后端，已识别的复用现有 records，
-    // 避免每次新增 PDF 都重跑全部文件。days 变化时后端用 existing records 重算汇总。
     const recognizedPaths = new Set(records.map((r) => r.fullPath))
     const newFiles = files.filter((f) => !recognizedPaths.has(f))
+    const newPdfs = newFiles.filter(isPdfPath)
+    const newImages = newFiles.filter(isImagePath)
 
     setIsRecognizing(true)
     setProgress(0)
@@ -85,34 +105,61 @@ function App() {
     setStatus(newFiles.length > 0 ? `正在识别 ${newFiles.length} 个新文件...` : '正在重新计算汇总...')
 
     try {
-      const result = await recognizeInvoices(
-        newFiles,
-        days,
-        records,
-        (cur, total) => {
-          setProgress(cur)
-          setProgressTotal(total)
-        },
-        (record) => {
-          setRecords((prev) => [...prev, record])
+      let accumulated = records
+
+      // 1. PDF 走 Rust 批量识别（进度 + 单条推送由后端 emit）
+      if (newPdfs.length > 0) {
+        const pdfResult = await recognizeInvoices(
+          newPdfs,
+          days,
+          accumulated,
+          (cur, total) => {
+            setProgress(cur)
+            setProgressTotal(total)
+          },
+          (_record) => {
+            // 增量推送仅做 UI 反馈，accumulated 由 pdfResult.records 统一对齐
+          },
+        )
+        accumulated = pdfResult.records
+        setRecords(accumulated)
+      }
+
+      // 2. 图片走前端 OCR 逐张识别（Worker 模式不阻塞 UI）；长截图多订单会返回多份记录
+      if (newImages.length > 0) {
+        const imageService = await getImageRecognition()
+        for (let i = 0; i < newImages.length; i++) {
+          const imgPath = newImages[i]
+          const filename = imgPath.split(/[\\/]/).pop() ?? imgPath
+          try {
+            const bytes = await readImageBytes(imgPath)
+            const file = new File([bytes], filename, { type: mimeFromExt(imgPath) })
+            // 一张长截图可能含多个订单 → recognizeAll 返回多份 InvoiceRecord
+            const records = await imageService.recognizeAll(file)
+            accumulated = [...accumulated, ...records]
+            setRecords(accumulated)
+          } catch (e) {
+            // 单张图片失败不中断整批，记录错误状态继续
+            console.error(`图片识别失败 ${filename}:`, e)
+            setStatus(`图片 ${filename} 识别失败: ${String(e)}，继续识别其余文件...`)
+          }
+          setProgress((newPdfs.length || 0) + i + 1)
         }
-      )
+      }
 
-      // 全量对齐（existing + new），totals/previewRows 最后一次性填充
-      setRecords(result.records)
-      setTotals(result.totals)
-      setPreviewRows(result.previewRows)
+      // 3. 全量重算汇总/预览（空文件路径走 Rust 重算路径）
+      const final = await recognizeInvoices([], days, accumulated)
+      setTotals(final.totals)
+      setPreviewRows(final.previewRows)
 
-      // ponytail: 识别完成若有 car 记录则自动弹分类窗——
-      // 预览暂隐（pending=true）直到用户确认/取消；否则直接显示。
-      const hasCars = result.records.some((r) => r.type === 'car')
+      const hasCars = final.records.some((r) => r.type === 'car')
       if (hasCars) {
         setCarClassifyPending(true)
         setShowCarClassify(true)
-        setStatus(`识别完成，共 ${result.records.length} 条记录，请先分类用车记录`)
+        setStatus(`识别完成，共 ${final.records.length} 条记录，请先分类用车记录`)
       } else {
         setCarClassifyPending(false)
-        setStatus(`识别完成，共 ${result.records.length} 条记录`)
+        setStatus(`识别完成，共 ${final.records.length} 条记录`)
       }
     } catch (e) {
       setStatus(`识别失败: ${String(e)}`)
@@ -227,12 +274,13 @@ function App() {
         setShowDragMask(false)
       } else if (p.type === 'drop') {
         setShowDragMask(false)
-        const pdfs = p.paths.filter((f) => f.toLowerCase().endsWith('.pdf'))
-        if (pdfs.length === 0) return
-        const fresh = pdfs.filter((f) => !filesRef.current.includes(f))
+        // ponytail: 拖拽支持 PDF + 图片，按扩展名过滤
+        const accepted = p.paths.filter((f) => isPdfPath(f) || isImagePath(f))
+        if (accepted.length === 0) return
+        const fresh = accepted.filter((f) => !filesRef.current.includes(f))
         if (fresh.length === 0) return
         setFiles((prev) => [...prev, ...fresh])
-        setStatus(`已添加 ${filesRef.current.length + fresh.length} 个文件（拖拽）`)
+        setStatus(`已添加 ${filesRef.current.length + fresh.length} 个文件`)
       }
     })
     return () => { unlisten.then((fn) => fn()) }

@@ -10,15 +10,19 @@ use tauri::Emitter;
 use commands::update::{PendingUpdate, PendingUpdateBytes};
 use std::sync::Mutex;
 
-/// 从命令行参数中提取 PDF 文件路径，emit 给前端
-fn emit_pdf_args(app: &tauri::AppHandle, args: &[String]) {
-    let pdfs: Vec<String> = args
+/// 从命令行参数中提取文件路径（PDF + 图片），emit 给前端
+fn emit_file_args(app: &tauri::AppHandle, args: &[String]) {
+    const IMAGE_EXTS: &[&str] = &[".png", ".jpg", ".jpeg", ".webp", ".bmp"];
+    let files: Vec<String> = args
         .iter()
-        .filter(|a| a.to_lowercase().ends_with(".pdf"))
+        .filter(|a| {
+            let lower = a.to_lowercase();
+            lower.ends_with(".pdf") || IMAGE_EXTS.iter().any(|ext| lower.ends_with(ext))
+        })
         .cloned()
         .collect();
-    if !pdfs.is_empty() {
-        let _ = app.emit("file://open", pdfs);
+    if !files.is_empty() {
+        let _ = app.emit("file://open", files);
     }
 }
 
@@ -34,19 +38,21 @@ pub fn run() {
 
     // ponytail: 单实例——用户拖文件到任务栏图标或右键"打开方式"时，
     // Windows 会启动新进程传参；single-instance 将参数转发到已有实例，
-    // 统一走 emit_pdf_args → file://open 事件。
+    // 统一走 emit_file_args → file://open 事件。
     let args: Vec<String> = std::env::args().collect();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
-            emit_pdf_args(app, &argv);
+            emit_file_args(app, &argv);
         }))
         .manage(PendingUpdate(Mutex::new(None)))
         .manage(PendingUpdateBytes(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             commands::recognition::recognize_invoices,
+            commands::recognition::recognize_from_text,
+            commands::recognition::read_image_bytes,
             commands::pdf::merge_pdfs,
             commands::excel::export_excel,
             commands::update::check_for_update,
@@ -54,8 +60,8 @@ pub fn run() {
             commands::update::install_update,
         ])
         .setup(move |app| {
-            // 首次启动：如果命令行带了 PDF 参数，也 emit 给前端
-            emit_pdf_args(app.handle(), &args);
+            // 首次启动：如果命令行带了文件参数，也 emit 给前端
+            emit_file_args(app.handle(), &args);
             // ponytail: 原生菜单栏——自定义项 emit id 给前端分发，原生子项(quit)自处理
             let quit = PredefinedMenuItem::quit(app, None)?;
             let about = MenuItem::with_id(app, "help_about", "关于 SnapClaim", true, None::<&str>)?;
@@ -65,7 +71,7 @@ pub fn run() {
                 "文件",
                 true,
                 &[
-                    &MenuItem::with_id(app, "file_add", "添加 PDF...", true, Some("CmdOrCtrl+O"))?,
+                    &MenuItem::with_id(app, "file_add", "添加文件...", true, Some("CmdOrCtrl+O"))?,
                     &MenuItem::with_id(app, "file_clear", "清空", true, None::<&str>)?,
                     &quit,
                 ],

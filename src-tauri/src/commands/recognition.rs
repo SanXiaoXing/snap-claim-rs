@@ -70,90 +70,23 @@ pub async fn recognize_invoices(
             // );
 
             let (invoice_type, from_qr) =
-                recognition_service::detect_invoice_type(page_text, &qr_codes, &rules);
+                recognition_service::detect_invoice_type(page_text, &qr_codes, &rules, None);
             let fields = recognition_service::extract_fields(
                 page_text,
                 &invoice_type,
                 from_qr,
                 &qr_codes,
                 &rules,
+                None,
             );
 
-            let record = InvoiceRecord {
-                kind: invoice_type,
-                amount: fields.get("amount").and_then(|v| v.as_f64()),
-                qr_amount: fields
-                    .get("qrAmount")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false),
-                filename: filename.clone(),
-                full_path: path.clone(),
-                page_number: *page_num,
-                train_number: fields
-                    .get("train_number")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string()),
-                departure_station: fields
-                    .get("departure_station")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string()),
-                arrival_station: fields
-                    .get("arrival_station")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string()),
-                departure_time: fields
-                    .get("departure_time")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string()),
-                hotel_name: fields
-                    .get("hotel_name")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string()),
-                check_in_date: fields
-                    .get("check_in_date")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string()),
-                check_out_date: fields
-                    .get("check_out_date")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string()),
-                nights: fields.get("nights").and_then(|v| v.as_u64()).map(|n| n as u32),
-                car_date: fields
-                    .get("car_date")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string()),
-                mileage: fields.get("mileage").and_then(|v| v.as_f64()),
-                flight_number: fields
-                    .get("flight_number")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string()),
-                departure_city: fields
-                    .get("departure_city")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string()),
-                arrival_city: fields
-                    .get("arrival_city")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string()),
-                flight_date: fields
-                    .get("flight_date")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string()),
-                invoice_code: fields
-                    .get("invoice_code")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string()),
-                invoice_number: fields
-                    .get("invoice_number")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string()),
-                issue_date: fields
-                    .get("issue_date")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string()),
-                // ponytail: 新建 car 记录默认市内交通，由前端批量分类弹窗改 is_round_trip
-                is_round_trip: false,
-            };
+            let record = recognition_service::build_invoice_record(
+                &fields,
+                &invoice_type,
+                &filename,
+                path,
+                *page_num,
+            );
 
             tracing::info!(
                 "第 {page_num} 页识别: 类型={}, 金额={:?}",
@@ -179,4 +112,73 @@ pub async fn recognize_invoices(
         totals,
         preview_rows,
     })
+}
+
+/// 从纯文本识别单据：图片 OCR 走 PaddleOCR.js 得到文本后调用本命令，
+/// 复用现有 detect_invoice_type / extract_fields 业务解析（docs/LOCAL_OCR_SPEC.md §19）。
+/// 图片不做二维码识别（§7.2），qr_codes 传空。
+/// image_hint 可选——前端从 App 订单列表截图中预先抽出的订单号/末行金额，
+/// 用于补强：订单号前缀直接告知类型（DC=car/DF=flight/DH=hotel），末行金额补强文本提取。
+#[command]
+pub fn recognize_from_text(
+    text: String,
+    filename: String,
+    full_path: String,
+    page_number: u32,
+    image_hint: Option<recognition_service::ImageHint>,
+) -> Result<InvoiceRecord, AppError> {
+    let rules = RulesConfig::load().map_err(AppError::RulesLoad)?;
+    let qr_codes: Vec<String> = vec![];
+
+    // 终端打印订单号 + 金额，便于调试可见
+    if let Some(h) = image_hint.as_ref() {
+        tracing::info!(
+            "[image-ocr] 文件={} 订单号={} 类型提示={} 金额提示={:?}",
+            filename,
+            h.order_id.as_deref().unwrap_or("(none)"),
+            h.order_type.as_deref().unwrap_or("(none)"),
+            h.amount,
+        );
+    }
+
+    let (invoice_type, from_qr) = recognition_service::detect_invoice_type(
+        &text,
+        &qr_codes,
+        &rules,
+        image_hint.as_ref(),
+    );
+    let fields = recognition_service::extract_fields(
+        &text,
+        &invoice_type,
+        from_qr,
+        &qr_codes,
+        &rules,
+        image_hint.as_ref(),
+    );
+
+    // 识别完成后打印最终结果
+    let amount = fields.get("amount").and_then(|v| v.as_f64());
+    tracing::info!(
+        "[image-ocr] 识别完成 文件={} 类型={} 金额={:?}",
+        filename,
+        invoice_type,
+        amount,
+    );
+
+    Ok(recognition_service::build_invoice_record(
+        &fields,
+        &invoice_type,
+        &filename,
+        &full_path,
+        page_number,
+    ))
+}
+
+/// 读取图片字节：前端 ImageRecognitionService 需要 File 对象喂给 PaddleOCR.js，
+/// Tauri WebView 无法直接访问本地文件系统，通过此命令读字节返回。
+/// ponytail: 不引入 tauri-plugin-fs，单命令够用。Vec<u8> 经 Tauri 序列化为 number[]。
+#[command]
+pub fn read_image_bytes(path: String) -> Result<Vec<u8>, AppError> {
+    std::fs::read(&path)
+        .map_err(|e| AppError::PdfParse(format!("读取图片失败: {e}")))
 }
