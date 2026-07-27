@@ -55,11 +55,24 @@ export class PaddleOcrService implements OcrService {
   private async createRunner(): Promise<PaddleOCR> {
     try {
       // Worker 模式：OCR 推理放到独立 Worker，避免阻塞 Tauri WebView 主线程。
+      // 模型文件从本地加载（public/models/），WASM 文件从本地加载（public/wasm/），
+      // 确保打包后离线可用，不依赖远程 CDN。
       const ocr = await PaddleOCR.create({
         lang: "ch",
         ocrVersion: "PP-OCRv5",
         worker: true,
-        ortOptions: { backend: "auto" },
+        textDetectionModelName: "PP-OCRv5_mobile_det",
+        textDetectionModelAsset: {
+          url: new URL("/models/PP-OCRv5_mobile_det_onnx_infer.tar", window.location.origin).href,
+        },
+        textRecognitionModelName: "PP-OCRv5_mobile_rec",
+        textRecognitionModelAsset: {
+          url: new URL("/models/PP-OCRv5_mobile_rec_onnx_infer.tar", window.location.origin).href,
+        },
+        ortOptions: {
+          backend: "wasm",
+          wasmPaths: new URL("/wasm/", window.location.origin).href,
+        },
       });
       return ocr as unknown as PaddleOCR;
     } catch (e) {
