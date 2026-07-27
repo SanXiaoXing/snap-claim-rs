@@ -2,6 +2,11 @@
 
 > 此处维护每个版本面向用户的更新说明。发布时 GitHub Actions 会自动提取当前 tag 对应的 `## vX.Y.Z` 段落，写入 Release 正文和 `latest.json`。
 
+## v1.3.2
+
+- 修复图片 OCR 在开发环境下因缺少 ONNX Runtime WebAssembly JS wrapper 文件导致初始化失败的问题；
+- 移除冗余的 WASM 变体文件，减小安装包体积。
+
 ## v1.3.1
 
 - 修复图片 OCR 在离线环境下初始化失败的问题，OCR 模型文件和推理引擎现在集成到安装包中，无需在线下载；
