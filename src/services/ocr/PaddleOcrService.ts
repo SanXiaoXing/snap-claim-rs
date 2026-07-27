@@ -57,9 +57,8 @@ export class PaddleOcrService implements OcrService {
       // Worker 模式：OCR 推理放到独立 Worker，避免阻塞 Tauri WebView 主线程。
       // 模型文件从本地加载（public/models/），WASM 文件从本地加载（public/wasm/），
       // 确保打包后离线可用，不依赖远程 CDN。
+      // 显式指定模型名和本地资产路径，不依赖 lang/ocrVersion 的默认 CDN 下载。
       const ocr = await PaddleOCR.create({
-        lang: "ch",
-        ocrVersion: "PP-OCRv5",
         worker: true,
         textDetectionModelName: "PP-OCRv5_mobile_det",
         textDetectionModelAsset: {
