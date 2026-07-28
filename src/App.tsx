@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import './styles/globals.css'
 import { LeftPanel, RightPanel } from './components/Panels'
+import { HistoryView } from './components/history/HistoryView'
+import { HistoryDetailView } from './components/history/HistoryDetailView'
 import { DragMask } from './components/DragMask'
 import { DateRangeModal } from './components/DateRangeModal'
 import { AboutModal } from './components/AboutModal'
@@ -8,7 +10,7 @@ import { CarClassifyModal } from './components/CarClassifyModal'
 import { MergePdfModal } from './components/MergePdfModal'
 import { UpdateDialog } from './components/UpdateDialog'
 import { UpdateProgressWidget } from './components/UpdateProgressWidget'
-import { pickFiles, recognizeInvoices, recognizeFromText, readImageBytes, mimeFromExt, isImagePath, isPdfPath, mergePdfs, pickSavePath, exportExcel, checkForUpdate, downloadUpdate, installDownloadedUpdate } from './lib/tauri'
+import { pickFiles, recognizeInvoices, recognizeFromText, readImageBytes, mimeFromExt, isImagePath, isPdfPath, mergePdfs, pickSavePath, exportExcel, checkForUpdate, downloadUpdate, installDownloadedUpdate, saveHistory } from './lib/tauri'
 import { useGsapMount } from './lib/gsap-hooks'
 import { listen } from '@tauri-apps/api/event'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
@@ -20,7 +22,13 @@ const EMPTY_TOTALS: Totals = {
   subsidy: 0, advance: 0, refund: 0, total: 0, chinese: '零元整',
 }
 
+type ViewState =
+  | { kind: 'main' }
+  | { kind: 'history' }
+  | { kind: 'history_detail'; id: number }
+
 function App() {
+  const [view, setView] = useState<ViewState>({ kind: 'main' })
   const [files, setFiles] = useState<string[]>([])
   const [isRecognizing, setIsRecognizing] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -266,6 +274,28 @@ function App() {
     localStorage.setItem('snap-claim-theme', theme)
   }, [])
 
+  // 保存历史记录
+  const handleSave = useCallback(async () => {
+    if (records.length === 0) {
+      setStatus('没有可保存的记录')
+      return
+    }
+    setStatus('正在保存...')
+    try {
+      const detail = await saveHistory(
+        records,
+        totals,
+        previewRows,
+        startDate,
+        endDate,
+        days,
+      )
+      setStatus(`已保存历史记录：${detail.name}`)
+    } catch (e) {
+      setStatus(`保存失败: ${String(e)}`)
+    }
+  }, [records, totals, previewRows, startDate, endDate, days])
+
   // 启动时恢复已保存的主题
   useEffect(() => {
     const saved = localStorage.getItem('snap-claim-theme')
@@ -350,14 +380,15 @@ function App() {
   }, [setStatus, updateProgress])
 
   // 原生菜单事件分发：后端 emit id，前端按 id 路由到现有 handler
-  const handlers = useRef({ handleAddFiles, handleMergePdf, handleExportReport, handleClear, handleThemeChange, setStatus, setShowAbout, handleManualCheckUpdate })
-  handlers.current = { handleAddFiles, handleMergePdf, handleExportReport, handleClear, handleThemeChange, setStatus, setShowAbout, handleManualCheckUpdate }
+  const handlers = useRef({ handleAddFiles, handleMergePdf, handleExportReport, handleClear, handleThemeChange, setStatus, setShowAbout, handleManualCheckUpdate, setView: setView as React.Dispatch<React.SetStateAction<ViewState>> })
+  handlers.current = { handleAddFiles, handleMergePdf, handleExportReport, handleClear, handleThemeChange, setStatus, setShowAbout, handleManualCheckUpdate, setView }
   useEffect(() => {
     const unlisten = listen<string>('menu://event', (e) => {
       const id = e.payload
       const h = handlers.current
       if (id.startsWith('theme_')) h.handleThemeChange(id.slice(6))
       else if (id === 'file_add') h.handleAddFiles()
+      else if (id === 'file_history') h.setView({ kind: 'history' })
       else if (id === 'file_merge') h.handleMergePdf()
       else if (id === 'file_export') h.handleExportReport()
       else if (id === 'file_clear') h.handleClear()
@@ -435,29 +466,44 @@ function App() {
       <div className="fixed inset-0 -z-10 pointer-events-none mac-mesh-bg" />
 
       <main ref={mainRef} className="flex-1 flex overflow-hidden">
-        <LeftPanel
-          files={files}
-          records={records}
-          onAddFiles={handleAddFiles}
-          onDeleteSelected={handleDeleteSelected}
-          onClear={handleClear}
-          onStartRecognition={handleStartRecognition}
-          isRecognizing={isRecognizing}
-          progress={progress}
-          progressTotal={progressTotal}
-          status={status}
-          days={days}
-          startDate={startDate}
-          endDate={endDate}
-          onOpenDatePicker={() => setShowDatePicker(true)}
-          totals={totals}
-        />
-        <RightPanel
-          records={records}
-          previewRows={previewRows}
-          onOpenCarClassify={() => setShowCarClassify(true)}
-          previewHidden={carClassifyPending}
-        />
+        {view.kind === 'main' ? (
+          <>
+            <LeftPanel
+              files={files}
+              records={records}
+              onAddFiles={handleAddFiles}
+              onDeleteSelected={handleDeleteSelected}
+              onClear={handleClear}
+              onStartRecognition={handleStartRecognition}
+              isRecognizing={isRecognizing}
+              progress={progress}
+              progressTotal={progressTotal}
+              status={status}
+              days={days}
+              startDate={startDate}
+              endDate={endDate}
+              onOpenDatePicker={() => setShowDatePicker(true)}
+              totals={totals}
+            />
+            <RightPanel
+              records={records}
+              previewRows={previewRows}
+              onOpenCarClassify={() => setShowCarClassify(true)}
+              onSave={handleSave}
+              previewHidden={carClassifyPending}
+            />
+          </>
+        ) : view.kind === 'history' ? (
+          <HistoryView
+            onBack={() => setView({ kind: 'main' })}
+            onViewDetail={(id) => setView({ kind: 'history_detail', id })}
+          />
+        ) : (
+          <HistoryDetailView
+            id={view.id}
+            onBack={() => setView({ kind: 'history' })}
+          />
+        )}
       </main>
 
       <DragMask isVisible={showDragMask} />

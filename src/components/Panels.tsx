@@ -207,11 +207,13 @@ export function RightPanel({
   records,
   previewRows,
   onOpenCarClassify,
+  onSave,
   previewHidden,
 }: {
   records: InvoiceRecord[]
   previewRows: PreviewRow[]
   onOpenCarClassify: () => void
+  onSave: () => void
   previewHidden: boolean
 }) {
   // 表格行 stagger 入场（反馈：新增记录逐行淡入，引导阅读顺序）
@@ -229,14 +231,24 @@ export function RightPanel({
       <section className="mac-card p-4 gsap-enter">
         <div className="flex items-center justify-between mb-2">
           <h2 className="font-bold">识别结果</h2>
-          {hasCarRecords && (
-            <button
-              className="btn-secondary text-xs px-3 py-1"
-              onClick={onOpenCarClassify}
-            >
-              批量分类用车
-            </button>
-          )}
+          <div className="flex gap-2">
+            {records.length > 0 && (
+              <button
+                className="btn-secondary text-xs px-3 py-1"
+                onClick={onSave}
+              >
+                保存记录
+              </button>
+            )}
+            {hasCarRecords && (
+              <button
+                className="btn-secondary text-xs px-3 py-1"
+                onClick={onOpenCarClassify}
+              >
+                批量分类用车
+              </button>
+            )}
+          </div>
         </div>
         <div className="max-h-[480px] overflow-auto rounded-lg border border-[var(--border)]">
           <table className="data-table">

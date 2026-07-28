@@ -1,7 +1,7 @@
 import { invoke, Channel } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog'
-import type { InvoiceRecord, RecognitionResult, PreviewRow, UpdateInfo } from '../types'
+import type { InvoiceRecord, RecognitionResult, PreviewRow, Totals, UpdateInfo, HistorySummary, HistoryDetail } from '../types'
 
 // ── 文件选择 ──
 
@@ -196,6 +196,47 @@ export async function downloadUpdate(
 export async function installDownloadedUpdate(): Promise<void> {
   try {
     await invoke<void>('install_update')
+  } catch (e) {
+    throw new Error(typeof e === 'string' ? e : JSON.stringify(e))
+  }
+}
+
+// ── 历史记录 ──
+
+export async function saveHistory(
+  records: InvoiceRecord[],
+  totals: Totals,
+  previewRows: PreviewRow[],
+  startDate: string | null,
+  endDate: string | null,
+  days: number,
+): Promise<HistoryDetail> {
+  try {
+    return await invoke<HistoryDetail>('save_history', { records, totals, previewRows, startDate, endDate, days })
+  } catch (e) {
+    throw new Error(typeof e === 'string' ? e : JSON.stringify(e))
+  }
+}
+
+export async function getHistoryList(): Promise<HistorySummary[]> {
+  try {
+    return await invoke<HistorySummary[]>('get_history_list')
+  } catch (e) {
+    throw new Error(typeof e === 'string' ? e : JSON.stringify(e))
+  }
+}
+
+export async function getHistoryDetail(id: number): Promise<HistoryDetail> {
+  try {
+    return await invoke<HistoryDetail>('get_history_detail', { id })
+  } catch (e) {
+    throw new Error(typeof e === 'string' ? e : JSON.stringify(e))
+  }
+}
+
+export async function deleteHistory(id: number): Promise<void> {
+  try {
+    await invoke<void>('delete_history', { id })
   } catch (e) {
     throw new Error(typeof e === 'string' ? e : JSON.stringify(e))
   }

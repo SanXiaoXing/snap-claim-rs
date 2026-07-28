@@ -72,3 +72,31 @@ export interface VersionHistory {
   version: string
   changes: string[]
 }
+
+// ── 历史记录 ──
+
+export interface HistorySummary {
+  id: number
+  name: string
+  createdAt: string
+  startDate: string | null
+  endDate: string | null
+  days: number
+  totals: Totals
+  intercityCount: number
+  otherCount: number
+  remark: string | null
+}
+
+export interface HistoryDetail {
+  id: number
+  name: string
+  createdAt: string
+  startDate: string | null
+  endDate: string | null
+  days: number
+  totals: Totals
+  records: InvoiceRecord[]
+  previewRows: PreviewRow[]
+  remark: string | null
+}

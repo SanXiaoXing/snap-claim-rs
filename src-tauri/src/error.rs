@@ -21,6 +21,9 @@ pub enum AppError {
     #[error("更新检查失败: {0}")]
     #[serde(rename = "Updater")]
     Updater(String),
+    #[error("数据库错误: {0}")]
+    #[serde(rename = "Database")]
+    Database(String),
 }
 
 impl From<std::io::Error> for AppError {
@@ -32,5 +35,11 @@ impl From<std::io::Error> for AppError {
 impl From<serde_json::Error> for AppError {
     fn from(e: serde_json::Error) -> Self {
         Self::Io(e.to_string())
+    }
+}
+
+impl From<rusqlite::Error> for AppError {
+    fn from(e: rusqlite::Error) -> Self {
+        Self::Database(e.to_string())
     }
 }

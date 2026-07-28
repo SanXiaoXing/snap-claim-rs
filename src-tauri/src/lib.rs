@@ -7,7 +7,9 @@ mod utils;
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::Emitter;
+use tauri::Manager;
 use commands::update::PendingDownload;
+use services::database::Database;
 use std::sync::Mutex;
 
 /// 从命令行参数中提取文件路径（PDF + 图片），emit 给前端
@@ -58,8 +60,19 @@ pub fn run() {
             commands::update::check_for_update,
             commands::update::download_update,
             commands::update::install_update,
+            commands::history::save_history,
+            commands::history::get_history_list,
+            commands::history::get_history_detail,
+            commands::history::delete_history,
         ])
         .setup(move |app| {
+            // 初始化数据库
+            let database = Database::open().map_err(|e| {
+                tracing::error!("failed to open database: {}", e);
+                e
+            })?;
+            app.manage(database);
+
             // 首次启动：如果命令行带了文件参数，也 emit 给前端
             emit_file_args(app.handle(), &args);
             // ponytail: 原生菜单栏——自定义项 emit id 给前端分发，原生子项(quit)自处理
@@ -72,6 +85,8 @@ pub fn run() {
                 true,
                 &[
                     &MenuItem::with_id(app, "file_add", "添加文件...", true, Some("CmdOrCtrl+O"))?,
+                    &MenuItem::with_id(app, "file_history", "历史记录", true, Some("CmdOrCtrl+H"))?,
+                    &PredefinedMenuItem::separator(app)?,
                     &MenuItem::with_id(app, "file_clear", "清空", true, None::<&str>)?,
                     &quit,
                 ],
