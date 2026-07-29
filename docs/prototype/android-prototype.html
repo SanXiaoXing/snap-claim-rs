@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>SnapClaim Android 原型 — 报销单</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;background:#f0f2f5;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
+.phone-frame{width:390px;min-height:780px;max-height:860px;background:#fff;border-radius:40px;box-shadow:0 0 0 3px #3a3a3a,0 0 0 6px #555,0 20px 60px rgba(0,0,0,.3);overflow:hidden;position:relative;display:flex;flex-direction:column}
+.status-bar{display:flex;justify-content:space-between;align-items:center;padding:10px 24px 4px;font-size:12px;font-weight:600;color:#1a1a1a;background:#fff}
+.top-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 16px;flex-shrink:0}
+.top-bar h1{font-size:20px;font-weight:700;color:#1a1a1a}
+.top-bar .avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:14px}
+.screen{flex:1;overflow-y:auto;padding:0 16px 80px;display:none}
+.screen.active{display:block}
+.screen::-webkit-scrollbar{width:0}
+.bottom-nav{display:flex;justify-content:space-around;align-items:center;padding:8px 0 12px;background:#fff;border-top:1px solid #f0f0f0;flex-shrink:0}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:#999;cursor:pointer;transition:color .2s;border:none;background:none;padding:4px 12px}
+.nav-item svg{width:24px;height:24px;stroke-width:1.8}
+.nav-item.active{color:#667eea}
+.nav-item.active svg{stroke:#667eea}
+.back-btn{display:inline-flex;align-items:center;gap:4px;font-size:14px;color:#667eea;cursor:pointer;border:none;background:none;padding:4px 0}
+.back-btn svg{width:20px;height:20px}
+.section-title{display:flex;justify-content:space-between;align-items:center;margin:16px 0 10px}
+.section-title h2{font-size:16px;font-weight:600;color:#1a1a1a}
+.section-title a{font-size:12px;color:#667eea;cursor:pointer}
+.card{background:#f7f8fc;border-radius:14px;padding:16px;margin-bottom:12px}
+.card-title{font-size:13px;color:#999;margin-bottom:6px}
+.btn{padding:10px 20px;border-radius:10px;border:none;font-size:14px;font-weight:500;cursor:pointer;transition:opacity .15s}
+.btn:active{opacity:.7}
+.btn-primary{background:#667eea;color:#fff}
+.btn-danger{background:#f5576c;color:#fff}
+.btn-outline{background:#fff;color:#667eea;border:1.5px solid #667eea}
+.btn-secondary{background:#f0f0f0;color:#333}
+.btn-sm{padding:6px 12px;font-size:12px}
+.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:6px;font-weight:500}
+.badge-green{background:#e8f5e9;color:#2e7d32}
+.badge-orange{background:#fff3e0;color:#e65100}
+.badge-blue{background:#e3f2fd;color:#1565c0}
+.badge-purple{background:#f3e5f5;color:#6a1b9a}
+.badge-red{background:#ffebee;color:#c62828}
+.badge-gray{background:#f5f5f5;color:#616161}
+.empty-state{text-align:center;padding:40px 20px}
+.empty-state svg{width:56px;height:56px;stroke:#d0d0d0;margin-bottom:10px}
+.empty-state h3{font-size:15px;color:#999;margin-bottom:4px}
+.empty-state p{font-size:13px;color:#bbb}
+.toast{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;z-index:20;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-8px)}
+.stats-row{display:flex;gap:8px;margin-bottom:14px}
+.stats-row .stat{flex:1;background:#f7f8fc;border-radius:12px;padding:12px;text-align:center}
+.stats-row .stat .val{font-size:22px;font-weight:700;color:#1a1a1a}
+.stats-row .stat .lbl{font-size:11px;color:#999;margin-top:2px}
+.claim-card{background:#fff;border:1px solid #eee;border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer}
+.claim-card:active{box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.claim-card .top{display:flex;justify-content:space-between;align-items:flex-start}
+.claim-card .name{font-size:15px;font-weight:600;color:#1a1a1a}
+.claim-card .meta{font-size:12px;color:#999;margin-top:2px}
+.claim-card .total{font-size:18px;font-weight:700;color:#f5576c}
+.claim-card .tags{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.claim-header-card{background:linear-gradient(135deg,#667eea,#764ba2);border-radius:16px;padding:20px;color:#fff;margin-bottom:12px}
+.claim-header-card .claim-name{font-size:20px;font-weight:700}
+.claim-header-card .claim-date{font-size:13px;opacity:.8;margin-top:4px}
+.claim-header-card .big-total{font-size:32px;font-weight:700;margin-top:12px}
+.claim-header-card .big-total small{font-size:14px;font-weight:400;opacity:.7}
+.totals-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.totals-grid .total-item{background:#fff;border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;font-size:13px;border:1px solid #eee}
+.totals-grid .total-item .lbl{color:#999}
+.totals-grid .total-item .val{font-weight:600;color:#1a1a1a}
+.totals-grid .total-item.highlight{background:#667eea;color:#fff;border-color:#667eea}
+.totals-grid .total-item.highlight .val{color:#fff}
+.record-entry{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0;cursor:pointer}
+.record-entry:last-child{border-bottom:none}
+.record-entry .r-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.record-entry .r-icon svg{width:18px;height:18px}
+.record-entry .r-icon.train{background:#fff3e0}.record-entry .r-icon.train svg{stroke:#ff9800}
+.record-entry .r-icon.flight{background:#e3f2fd}.record-entry .r-icon.flight svg{stroke:#2196f3}
+.record-entry .r-icon.hotel{background:#f3e5f5}.record-entry .r-icon.hotel svg{stroke:#9c27b0}
+.record-entry .r-icon.car{background:#e8f5e9}.record-entry .r-icon.car svg{stroke:#4caf50}
+.record-entry .r-icon.invoice{background:#fff8e1}.record-entry .r-icon.invoice svg{stroke:#ffc107}
+.record-entry .r-info{flex:1}
+.record-entry .r-info .rn{font-size:13px;font-weight:500;color:#1a1a1a}
+.record-entry .r-info .rm{font-size:11px;color:#999}
+.record-entry .ra{font-size:14px;font-weight:600;color:#f5576c}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:13px;color:#666;margin-bottom:4px;font-weight:500}
+.form-group input,.form-group textarea{width:100%;padding:10px 12px;border:1px solid #e0e0e0;border-radius:10px;font-size:14px;outline:none;background:#f7f8fc;font-family:inherit}
+.form-group input:focus{border-color:#667eea}
+.form-row{display:flex;gap:10px}
+.form-row .form-group{flex:1}
+.modal-overlay{display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:30;align-items:flex-end;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal-sheet{background:#fff;border-radius:20px 20px 0 0;width:100%;max-height:70%;overflow-y:auto;padding:20px;animation:slideUp .25s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-sheet .handle{width:36px;height:4px;border-radius:2px;background:#ddd;margin:0 auto 16px}
+.modal-sheet h3{font-size:17px;font-weight:600;text-align:center;margin-bottom:16px}
+.type-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px}
+.type-btn{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;border-radius:12px;border:1.5px solid #eee;background:#fff;cursor:pointer;font-size:12px;color:#333}
+.type-btn:active{transform:scale(.95)}
+.type-btn svg{width:24px;height:24px}
+.preview-table-wrap{overflow-x:auto;border:1px solid #e0e0e0;border-radius:10px;margin-top:8px}
+.preview-table{border-collapse:collapse;font-size:11px;width:100%;min-width:700px}
+.preview-table th{background:#f7f8fc;padding:6px 4px;white-space:nowrap;text-align:center;border-bottom:1px solid #e0e0e0;color:#666;font-weight:500}
+.preview-table td{padding:6px 4px;white-space:nowrap;border-bottom:1px solid #f0f0f0;text-align:center}
+.preview-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+.preview-table tr.bold td{font-weight:700;background:#f0f2ff}
+.scanner-view{position:relative;width:100%;aspect-ratio:3/4;background:#000;border-radius:16px;overflow:hidden;margin-bottom:12px}
+.scanner-placeholder{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff}
+.scanner-placeholder .scan-icon svg{width:64px;height:64px;stroke:#fff;opacity:.4}
+.scanner-placeholder p{font-size:14px;opacity:.3}
+.scan-frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60%;height:40%;border:2px solid rgba(102,126,234,.8);border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.5)}
+.scan-line{position:absolute;top:10%;left:10%;width:80%;height:2px;background:linear-gradient(90deg,transparent,#667eea,transparent);animation:scanMove 2s ease-in-out infinite}
+@keyframes scanMove{0%,100%{top:10%}50%{top:85%}}
+.scan-result-overlay{display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:10;align-items:center;justify-content:center}
+.scan-result-overlay.show{display:flex}
+.scan-result-card{background:#fff;border-radius:16px;padding:24px;width:85%;max-width:300px;animation:popIn .3s ease}
+@keyframes popIn{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+.upload-area{border:2px dashed #d0d0d0;border-radius:16px;padding:36px 20px;text-align:center;cursor:pointer}
+.upload-area:active{border-color:#667eea;background:#f0f2ff}
+.upload-area svg{width:44px;height:44px;stroke:#bbb;margin-bottom:8px}
+.upload-area p{font-size:14px;color:#999}
+.recognizing{display:none;text-align:center;padding:20px}
+.recognizing.show{display:block}
+.recognizing .spinner{width:36px;height:36px;border:3px solid #e0e0e0;border-top-color:#667eea;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.no-claim-banner{background:#fff3e0;border-radius:12px;padding:12px 16px;font-size:13px;color:#e65100;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+</style>
+</head>
+<body>
+<div class="phone-frame" id="app">
+<div class="status-bar">
+<span class="time">9:41</span>
+<div class="status-icons">
+<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+</div>
+</div>
+
+<!-- ====== 首页 ====== -->
+<div class="screen active" id="page-home">
+<div class="top-bar"><h1>SnapClaim</h1><div class="avatar">S</div></div>
+<div class="stats-row">
+<div class="stat"><div class="val" id="statClaims">0</div><div class="lbl">报销单</div></div>
+<div class="stat"><div class="val" id="statRecords">0</div><div class="lbl">总单据</div></div>
+<div class="stat"><div class="val" id="statTotal">¥0</div><div class="lbl">总金额</div></div>
+</div>
+<div id="currentClaimBanner"></div>
+<div class="section-title"><h2>所有报销单</h2><a onclick="showNewClaim()">+ 新建</a></div>
+<div id="claimList"></div>
+</div>
+
+<!-- ====== 报销单详情 ====== -->
+<div class="screen" id="page-claim">
+<div class="top-bar">
+<button class="back-btn" onclick="navigateTo('page-home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>返回</button>
+<h1 style="font-size:17px" id="claimTitle">报销单</h1>
+<button class="back-btn" onclick="deleteCurrentClaim()" style="color:#f5576c">删除</button>
+</div>
+<div id="claimDetailContent"></div>
+</div>
+
+<!-- ====== 新建报销单 ====== -->
+<div class="screen" id="page-new-claim">
+<div class="top-bar">
+<button class="back-btn" onclick="navigateTo('page-home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>返回</button>
+<h1 style="font-size:17px">新建报销单</h1><div style="width:40px"></div>
+</div>
+<div class="card">
+<div class="form-group"><label>报销单名称</label><input id="newClaimName" placeholder="例如：7月出差报销" value="7月出差报销"></div>
+<div class="form-row">
+<div class="form-group"><label>开始日期</label><input id="newStartDate" type="date" value="2026-07-01"></div>
+<div class="form-group"><label>结束日期</label><input id="newEndDate" type="date" value="2026-07-31"></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>出差天数</label><input id="newDays" type="number" value="5"></div>
+<div class="form-group"><label>补助标准 (¥/天)</label><input id="newSubsidyRate" type="number" value="100"></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>预借金额 (¥)</label><input id="newAdvance" type="number" value="3000"></div>
+</div>
+<div class="form-group"><label>备注</label><textarea id="newRemark" rows="2" placeholder="可选备注">北京出差</textarea></div>
+<button class="btn btn-primary" style="width:100%;padding:12px;margin-top:4px" onclick="createClaim()">创建报销单</button>
+</div>
+</div>
+
+<!-- ====== 扫码 ====== -->
+<div class="screen" id="page-scan">
+<div class="top-bar">
+<button class="back-btn" onclick="navigateTo('page-home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>返回</button>
+<h1 style="font-size:17px">二维码扫描</h1><div style="width:40px"></div>
+</div>
+<div class="no-claim-banner" id="scanClaimBanner">⚠️ 当前没有报销单，扫码后将自动新建</div>
+<div class="scanner-view">
+<div class="scanner-placeholder" id="scannerPlaceholder">
+<div class="scan-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="6" y="8" width="12" height="8" rx="1.5" stroke-width="2"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg></div>
+<p>摄像头已就绪</p>
+</div>
+<div class="scan-frame"></div><div class="scan-line"></div>
+<div class="scan-result-overlay" id="scanResultOverlay">
+<div class="scan-result-card">
+<div style="text-align:center;margin-bottom:12px"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#4caf50" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+<h3 style="text-align:center;font-size:16px;margin-bottom:12px">扫码成功</h3>
+<div class="field" style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid #eee"><span style="color:#999">发票代码</span><span style="font-weight:500">3100234567</span></div>
+<div class="field" style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid #eee"><span style="color:#999">发票号码</span><span style="font-weight:500">98765432</span></div>
+<div class="field" style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid #eee"><span style="color:#999">金额</span><span style="font-weight:600;color:#f5576c">¥ 577.50</span></div>
+<div class="field" style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid #eee"><span style="color:#999">开票日期</span><span style="font-weight:500">2026-07-15</span></div>
+<div class="field" style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px"><span style="color:#999">购买方</span><span style="font-weight:500">上海科技有限公司</span></div>
+<div class="btn-row" style="display:flex;gap:8px;margin-top:16px">
+<button class="btn btn-secondary btn-sm" style="flex:1" onclick="closeScanResult()">取消</button>
+<button class="btn btn-primary btn-sm" style="flex:1" onclick="saveScanToClaim()">加入报销单</button>
+</div>
+</div>
+</div>
+</div>
+<p style="text-align:center;font-size:13px;color:#666;margin-bottom:10px">将发票二维码置于 <strong>取景框</strong> 内</p>
+<button class="btn btn-secondary" style="width:100%;padding:12px" onclick="simulateScan()">📷 模拟扫码</button>
+</div>
+
+<!-- ====== 上传识别 ====== -->
+<div class="screen" id="page-upload">
+<div class="top-bar">
+<button class="back-btn" onclick="navigateTo('page-home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>返回</button>
+<h1 style="font-size:17px">识别车票</h1><div style="width:40px"></div>
+</div>
+<div class="no-claim-banner" id="uploadClaimBanner">⚠️ 当前没有报销单，识别后将自动新建</div>
+<div class="upload-area" id="uploadArea" onclick="simulateUpload()">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+<p>点击上传车票 / 机票 / 酒店单照片<br><strong>支持 JPG / PNG</strong></p>
+</div>
+<div class="preview-area" id="previewArea" style="display:none">
+<img id="previewImg" src="" alt="预览" style="width:100%;border-radius:12px;border:1px solid #e0e0e0;margin-bottom:10px">
+<div class="section-title"><h2 style="font-size:14px" id="uploadFileName">train_ticket.jpg</h2><a onclick="resetUpload()" style="font-size:12px">重新选择</a></div>
+</div>
+<div class="recognizing" id="recognizingState"><div class="spinner"></div><p>正在识别票据信息...</p></div>
+<div class="recognition-result" id="recognitionResult" style="display:none">
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#4caf50" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+<span class="badge badge-green">识别成功</span>
+<span id="recogType" style="font-size:13px;color:#666"></span>
+</div>
+<div id="recogFields"></div>
+<div class="result-actions" style="display:flex;gap:8px;margin-top:14px">
+<button class="btn btn-outline btn-sm" style="flex:1" onclick="resetUpload()">重新识别</button>
+<button class="btn btn-primary btn-sm" style="flex:1" onclick="saveRecogToClaim()">加入报销单</button>
+</div>
+</div>
+</div>
+
+<!-- ====== 记录详情 ====== -->
+<div class="screen" id="page-record-detail">
+<div class="top-bar">
+<button class="back-btn" onclick="navigateTo('page-claim')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>返回报销单</button>
+<h1 style="font-size:17px">记录详情</h1><div style="width:40px"></div>
+</div>
+<div id="recordDetailContent"></div>
+</div>
+
+<!-- ====== 底部导航 ====== -->
+<div class="bottom-nav">
+<button class="nav-item active" data-page="page-home" onclick="navigateTo('page-home')">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>首页</span>
+</button>
+<button class="nav-item" data-page="page-scan" onclick="navigateTo('page-scan')">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="9" width="10" height="6" rx="1"/></svg><span>扫码</span>
+</button>
+<button class="nav-item" data-page="page-upload" onclick="navigateTo('page-upload')">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span>识别</span>
+</button>
+<button class="nav-item" data-page="page-claim" onclick="navigateTo('page-claim')">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span>报销单</span>
+</button>
+</div>
+<div class="toast" id="toast"></div>
+</div>
+
+<script>
+// === Data Model ===
+const TYPE_LABEL={train:'高铁票',flight:'飞机票',hotel:'酒店住宿',car:'用车',invoice:'发票',subsidy:'补助',unknown:'未知'};
+const TYPE_KEYS=['train','flight','hotel','car','invoice'];
+let DB={claims:[],nextClaimId:1,currentClaimId:null};
+
+class Claim{
+  constructor(o){
+    this.id=o.id;this.name=o.name||'未命名报销单';
+    this.createdAt=new Date().toISOString().slice(0,16).replace('T',' ');
+    this.startDate=o.startDate||null;this.endDate=o.endDate||null;
+    this.days=o.days||1;this.subsidyRate=o.subsidyRate||100;
+    this.advance=o.advance??0;this.remark=o.remark||'';this.records=[];
+  }
+  get totals(){
+    let t={train:0,flight:0,hotel:0,car:0,roundTrip:0,invoice:0};
+    for(const r of this.records){
+      const a=r.amount??0;
+      if(r.type==='train')t.train+=a;
+      else if(r.type==='flight')t.flight+=a;
+      else if(r.type==='hotel')t.hotel+=a;
+      else if(r.type==='car'){t.car+=a;if(r.isRoundTrip)t.roundTrip+=a;}
+      else if(r.type==='invoice')t.invoice+=a;
+    }
+    const s=this.days*this.subsidyRate;
+    const rf=t.train+t.flight+t.hotel+t.car+t.invoice+s-this.advance;
+    const total=t.train+t.flight+t.hotel+t.car+t.invoice+s;
+    return{...t,subsidy:s,advance:this.advance,refund:rf,total,chinese:'¥'+total.toFixed(2)};
+  }
+  get intercityCount(){return this.records.filter(r=>r.type==='train'||r.type==='flight').length}
+  get otherCount(){return this.records.length-this.intercityCount}
+}
+
+function mkRec(opts){
+  return{type:opts.type,amount:opts.amount??null,qrAmount:false,filename:opts.filename||'',fullPath:'',pageNumber:1,
+    trainNumber:opts.trainNumber,departureStation:opts.departureStation,arrivalStation:opts.arrivalStation,departureTime:opts.departureTime,
+    flightNumber:opts.flightNumber,departureCity:opts.departureCity,arrivalCity:opts.arrivalCity,flightDate:opts.flightDate,
+    hotelName:opts.hotelName,checkInDate:opts.checkInDate,checkOutDate:opts.checkOutDate,nights:opts.nights??1,
+    carDate:opts.carDate,mileage:opts.mileage??0,isRoundTrip:opts.isRoundTrip||false,
+    invoiceCode:opts.invoiceCode,invoiceNumber:opts.invoiceNumber,issueDate:opts.issueDate,
+    passenger:opts.passenger||'',seat:opts.seat||''};
+}
+
+function seedData(){
+  const c1=new Claim({id:DB.nextClaimId++,name:'7月北京出差',startDate:'2026-07-01',endDate:'2026-07-05',days:5,subsidyRate:100,advance:3000,remark:'北京出差'});
+  c1.records.push(mkRec({type:'train',amount:577.50,trainNumber:'G1234',departureStation:'北京西',arrivalStation:'西安北',departureTime:'2026-07-01 08:30',passenger:'张三',seat:'二等座 03车05A'}));
+  c1.records.push(mkRec({type:'hotel',amount:1260,hotelName:'北京国贸大酒店',checkInDate:'2026-07-01',checkOutDate:'2026-07-05',nights:4}));
+  c1.records.push(mkRec({type:'car',amount:180,carDate:'2026-07-02',isRoundTrip:false}));
+  c1.records.push(mkRec({type:'invoice',amount:868,invoiceCode:'4400456789',invoiceNumber:'12345678',issueDate:'2026-07-03'}));
+  DB.claims.push(c1);
+
+  const c2=new Claim({id:DB.nextClaimId++,name:'6月上海差旅',startDate:'2026-06-10',endDate:'2026-06-12',days:3,subsidyRate:100,advance:2000,remark:'上海展会'});
+  c2.records.push(mkRec({type:'flight',amount:1290,flightNumber:'MU5101',departureCity:'北京',arrivalCity:'上海',flightDate:'2026-06-10'}));
+  c2.records.push(mkRec({type:'hotel',amount:880,hotelName:'上海浦东假日酒店',checkInDate:'2026-06-10',checkOutDate:'2026-06-12',nights:2}));
+  c2.records.push(mkRec({type:'car',amount:96,carDate:'2026-06-11',isRoundTrip:true}));
+  c2.records.push(mkRec({type:'invoice',amount:3200,invoiceCode:'3100234567',invoiceNumber:'98765432',issueDate:'2026-06-11'}));
+  DB.claims.push(c2);
+
+  const c3=new Claim({id:DB.nextClaimId++,name:'广州深圳往返',startDate:'2026-06-15',endDate:'2026-06-16',days:2,subsidyRate:100,advance:1000,remark:'客户拜访'});
+  c3.records.push(mkRec({type:'train',amount:199,trainNumber:'G567',departureStation:'广州南',arrivalStation:'深圳北',departureTime:'2026-06-15 09:45',passenger:'张三',seat:'一等座 02车08A'}));
+  c3.records.push(mkRec({type:'train',amount:199,trainNumber:'G568',departureStation:'深圳北',arrivalStation:'广州南',departureTime:'2026-06-16 18:30',passenger:'张三',seat:'一等座 05车12C'}));
+  c3.records.push(mkRec({type:'car',amount:65,carDate:'2026-06-15',isRoundTrip:false}));
+  DB.claims.push(c3);
+  DB.currentClaimId=c1.id;
+}
+seedData();
+
+function fmt(v){return '¥'+(v??0).toFixed(2)}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
+function getCurrentClaim(){return DB.claims.find(c=>c.id===DB.currentClaimId)}
+function updateScanClaimBanner(){const c=getCurrentClaim();document.getElementById('scanClaimBanner').textContent=c?'📋 当前：'+c.name:'⚠️ 当前没有报销单，扫码后将自动新建'}
+function updateUploadClaimBanner(){const c=getCurrentClaim();document.getElementById('uploadClaimBanner').textContent=c?'📋 当前：'+c.name:'⚠️ 当前没有报销单，识别后将自动新建'}
+
+// === Navigation ===
+function navigateTo(pageId){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const p=document.getElementById(pageId);if(p)p.classList.add('active');
+  const n=document.querySelector('.nav-item[data-page="'+pageId+'"]');if(n)n.classList.add('active');
+  if(pageId==='page-home')renderHome();
+  if(pageId==='page-claim')renderCurrentClaim();
+  if(pageId==='page-scan')updateScanClaimBanner();
+  if(pageId==='page-upload')updateUploadClaimBanner();
+}
+
+// === Home ===
+function renderHome(){
+  const s={claims:DB.claims.length,records:0,total:0};
+  for(const c of DB.claims){s.records+=c.records.length;s.total+=c.totals.total}
+  document.getElementById('statClaims').textContent=s.claims;
+  document.getElementById('statRecords').textContent=s.records;
+  document.getElementById('statTotal').textContent='¥'+s.total.toFixed(0);
+  const cur=getCurrentClaim();
+  const b=document.getElementById('currentClaimBanner');
+  if(cur){
+    b.innerHTML='<div style="background:#e8f5e9;border-radius:12px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="navigateTo(\'page-claim\')">'
+      +'<div><div style="font-size:13px;font-weight:600;color:#2e7d32">当前报销单：'+cur.name+'</div>'
+      +'<div style="font-size:11px;color:#666;margin-top:2px">'+cur.records.length+' 条记录 · '+fmt(cur.totals.total)+'</div></div>'
+      +'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#2e7d32" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>';
+  } else {
+    b.innerHTML='<div style="background:#fff3e0;border-radius:12px;padding:12px 16px;font-size:13px;color:#e65100;cursor:pointer;display:flex;align-items:center;gap:8px" onclick="showNewClaim()">⚠️ 暂无当前报销单，点击新建</div>';
+  }
+  const list=document.getElementById('claimList');
+  if(!DB.claims.length){list.innerHTML='<div class="empty-state"><h3>暂无报销单</h3><p>点击右上角「+ 新建」开始</p></div>';return}
+  list.innerHTML=[...DB.claims].reverse().map(c=>{
+    const t=c.totals;const active=c.id===DB.currentClaimId;
+    const tm={train:'orange',flight:'blue',hotel:'purple',car:'green',invoice:'red'};
+    const tags=TYPE_KEYS.filter(k=>c.records.some(r=>r.type===k)).map(k=>'<span class="badge badge-'+tm[k]+'">'+{train:'火车',flight:'飞机',hotel:'酒店',car:'用车',invoice:'发票'}[k]+'</span>');
+    return '<div class="claim-card" onclick="switchToClaim('+c.id+')"'+(active?' style="border-color:#667eea;background:#f0f2ff"':'')+'>'
+      +'<div class="top"><div><div class="name">'+c.name+(active?' <span class="badge badge-green" style="font-size:10px">当前</span>':'')+'</div>'
+      +'<div class="meta">'+c.createdAt+' · '+(c.startDate||'—')+' ~ '+(c.endDate||'—')+' · '+c.days+'天</div></div>'
+      +'<div class="total">'+fmt(t.total)+'</div></div>'
+      +'<div style="margin-top:4px;font-size:12px;color:#999">'+c.records.length+' 条记录</div>'
+      +'<div class="tags">'+tags.join('')+'</div></div>';
+  }).join('');
+}
+function showNewClaim(){navigateTo('page-new-claim')}
+function createClaim(){
+  const name=document.getElementById('newClaimName').value.trim()||('出差报销 '+new Date().toISOString().slice(0,10));
+  const c=new Claim({id:DB.nextClaimId++,name,startDate:document.getElementById('newStartDate').value,endDate:document.getElementById('newEndDate').value,days:+document.getElementById('newDays').value||1,subsidyRate:+document.getElementById('newSubsidyRate').value||100,advance:+document.getElementById('newAdvance').value||0,remark:document.getElementById('newRemark').value.trim()});
+  DB.claims.push(c);DB.currentClaimId=c.id;showToast('已创建报销单「'+c.name+'」');navigateTo('page-claim');
+}
+function switchToClaim(id){DB.currentClaimId=id;showToast('已切换报销单');navigateTo('page-claim')}
+function deleteCurrentClaim(){
+  const c=getCurrentClaim();if(!c)return;
+  if(!confirm('确定删除报销单「'+c.name+'」？此操作不可撤销。'))return;
+  DB.claims=DB.claims.filter(x=>x.id!==c.id);DB.currentClaimId=DB.claims.length?DB.claims[0].id:null;showToast('已删除');navigateTo('page-home');
+}
+
+// === Claim Detail ===
+function renderCurrentClaim(){
+  const c=getCurrentClaim();const el=document.getElementById('claimDetailContent');
+  if(!c){
+    el.innerHTML='<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><h3>暂无报销单</h3><p>去首页新建一个报销单</p><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="showNewClaim()">新建报销单</button></div>';
+    document.getElementById('claimTitle').textContent='报销单';return;
+  }
+  document.getElementById('claimTitle').textContent=c.name;const t=c.totals;
+  let h='<div class="claim-header-card"><div class="claim-name">'+c.name+'</div><div class="claim-date">'+(c.startDate||'—')+' ~ '+(c.endDate||'—')+' · '+c.days+' 天'+(c.remark?' · '+c.remark:'')+'</div><div class="big-total">'+fmt(t.total)+' <small>总金额</small></div><div style="font-size:12px;opacity:.7;margin-top:2px">大写：'+t.chinese+'</div></div>';
+  h+='<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div class="card-title" style="margin:0">费用汇总</div><button class="btn btn-primary btn-sm" onclick="showAddRecordModal()">+ 添加记录</button></div><div class="totals-grid">'
+    +'<div class="total-item"><span class="lbl">🚄 火车</span><span class="val">'+fmt(t.train)+'</span></div>'
+    +'<div class="total-item"><span class="lbl">✈️ 飞机</span><span class="val">'+fmt(t.flight)+'</span></div>'
+    +'<div class="total-item"><span class="lbl">🏨 住宿</span><span class="val">'+fmt(t.hotel)+'</span></div>'
+    +'<div class="total-item"><span class="lbl">🚗 用车</span><span class="val">'+fmt(t.car)+'</span></div>'
+    +'<div class="total-item"><span class="lbl">🧾 发票</span><span class="val">'+fmt(t.invoice)+'</span></div>'
+    +'<div class="total-item"><span class="lbl">💰 补助</span><span class="val">'+fmt(t.subsidy)+'</span></div>'
+    +'<div class="total-item"><span class="lbl">💳 预借</span><span class="val">'+fmt(t.advance)+'</span></div>'
+    +'<div class="total-item"><span class="lbl">🔄 退补</span><span class="val">'+fmt(t.refund)+'</span></div>'
+    +'<div class="total-item highlight" style="grid-column:span 2"><span class="lbl" style="color:rgba(255,255,255,.8)">合计</span><span class="val">'+fmt(t.total)+'</span></div></div></div>';
+  h+='<div class="card"><div class="card-title">单据清单（'+c.records.length+' 张）</div><div id="recordList">';
+  if(!c.records.length)h+='<div class="empty-state" style="padding:20px"><h3>暂无记录</h3><p>扫码、上传或手动添加</p></div>';
+  else for(let i=0;i<c.records.length;i++)h+=renderRecordEntry(c.records[i],i);
+  h+='</div></div>';
+
+  h+='<div class="card"><div class="card-title">报销单预览</div>';
+  const rows=buildPreviewRows(c);
+  if(rows.length){
+    h+='<div class="preview-table-wrap"><table class="preview-table"><thead><tr><th>出发地点</th><th>到达地点</th><th>交通金额</th><th>飞机票</th><th>住宿</th><th>市内交通</th><th>往返交通</th><th>补助标准</th><th>天数</th><th>合计</th></tr></thead><tbody>';
+    for(const row of rows){h+='<tr'+(row.bold?' class="bold"':'')+'>';for(let i=0;i<row.cells.length;i++){h+='<td'+(typeof row.cells[i]==='number'?' class="num"':'')+'>'+(row.cells[i]??'')+'</td>'}h+='</tr>'}
+    h+='</tbody></table></div>';
+  }else h+='<div style="text-align:center;padding:20px;color:#999;font-size:13px">暂无预览数据</div>';
+  h+='</div>';
+  el.innerHTML=h;
+}
+
+function renderRecordEntry(r,i){
+  const icons={train:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>',flight:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>',hotel:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21V9l9-6 9 6v12"/><path d="M9 21V12h6v9"/></svg>',car:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 17h14M5 17a2 2 0 0 1-2-2V9l2-5h14l2 5v6a2 2 0 0 1-2 2"/><circle cx="7" cy="15" r="2"/><circle cx="17" cy="15" r="2"/></svg>',invoice:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>'};
+  let name=r.filename||TYPE_LABEL[r.type]||'未知';
+  if(r.trainNumber)name=r.trainNumber;else if(r.flightNumber)name=r.flightNumber;else if(r.hotelName)name=r.hotelName;else if(r.invoiceCode)name='发票#'+(r.invoiceNumber||r.invoiceCode);else if(r.type==='car')name=r.isRoundTrip?'往返交通':'市内用车';
+  let sub='';
+  if(r.departureStation&&r.arrivalStation)sub=r.departureStation+' → '+r.arrivalStation;
+  else if(r.departureCity&&r.arrivalCity)sub=r.departureCity+' → '+r.arrivalCity;
+  else if(r.checkInDate)sub=r.checkInDate+' ~ '+(r.checkOutDate||'');
+  else if(r.carDate)sub=r.carDate;else if(r.issueDate)sub=r.issueDate;
+  return '<div class="record-entry" onclick="showRecordDetail('+i+')">'
+    +'<div class="r-icon '+r.type+'">'+(icons[r.type]||icons.invoice)+'</div>'
+    +'<div class="r-info"><div class="rn">'+name+' <span class="badge badge-gray" style="font-size:10px">'+(TYPE_LABEL[r.type]||'未知')+'</span></div>'
+    +'<div class="rm">'+sub+(r.passenger?' · '+r.passenger:'')+'</div></div>'
+    +'<div class="ra">'+(r.amount!==null?fmt(r.amount):'—')+'</div></div>';
+}
+
+function buildPreviewRows(c){
+  const rows=[];const t=c.totals;
+  for(const r of c.records){
+    const cells=Array(10).fill('');
+    if(r.type==='train'){cells[0]=r.departureStation||'';cells[1]=r.arrivalStation||'';cells[2]=r.amount??0;cells[9]=r.amount??0;}
+    else if(r.type==='flight'){cells[0]=r.departureCity||'';cells[1]=r.arrivalCity||'';cells[3]=r.amount??0;cells[9]=r.amount??0;}
+    else if(r.type==='hotel'){cells[0]=r.hotelName||'住宿';cells[4]=r.amount??0;cells[9]=r.amount??0;}
+    else if(r.type==='car'){cells[0]=r.isRoundTrip?'往返交通':'市内交通';if(r.isRoundTrip)cells[6]=r.amount??0;else cells[5]=r.amount??0;cells[9]=r.amount??0;}
+    else if(r.type==='invoice'){cells[0]='发票';cells[9]=r.amount??0;}
+    rows.push({cells,bold:false});
+  }
+  rows.push({cells:['合计','',t.train,t.flight,t.hotel,t.car-t.roundTrip,t.roundTrip,t.subsidy,c.days,t.total],bold:true});
+  rows.push({cells:['预借金额','','','','','','','','',t.advance],bold:false});
+  rows.push({cells:['退补金额','','','','','','','','',t.refund],bold:false});
+  return rows;
+}
+
+// === Add Record Modal ===
+function showAddRecordModal(){
+  const overlay=document.getElementById('addRecordOverlay');
+  if(overlay){overlay.classList.add('show');return}
+  const div=document.createElement('div');div.className='modal-overlay';div.id='addRecordOverlay';
+  const items=[{k:'train',l:'高铁票',c:'train'},{k:'flight',l:'飞机票',c:'flight'},{k:'hotel',l:'酒店住宿',c:'hotel'},{k:'car',l:'市内用车',c:'car'},{k:'carRound',l:'往返交通',c:'car'},{k:'invoice',l:'发票',c:'invoice'}];
+  let btns='';
+  for(const i of items){
+    let svg='';
+    if(i.k==='train')svg='<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/><path d="M3 9h18"/><path d="M3 15h18"/>';
+    else if(i.k==='flight')svg='<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>';
+    else if(i.k==='hotel')svg='<path d="M3 21V9l9-6 9 6v12"/><path d="M9 21V12h6v9"/>';
+    else if(i.k==='car'||i.k==='carRound')svg='<path d="M5 17h14M5 17a2 2 0 0 1-2-2V9l2-5h14l2 5v6a2 2 0 0 1-2 2"/><circle cx="7" cy="15" r="2"/><circle cx="17" cy="15" r="2"/>';
+    else svg='<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>';
+    btns+='<div class="type-btn '+i.c+'" onclick="showAddRecordForm(\''+i.k+'\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+svg+'</svg><span>'+i.l+'</span></div>';
+  }
+  div.innerHTML='<div class="modal-sheet"><div class="handle"></div><h3>选择添加类型</h3><div class="type-grid">'+btns+'</div><div id="addRecordFormArea"></div><button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="closeAddRecordModal()">取消</button></div>';
+  document.getElementById('app').appendChild(div);
+  setTimeout(()=>div.classList.add('show'),10);
+}
+function closeAddRecordModal(){const m=document.getElementById('addRecordOverlay');if(m)m.classList.remove('show')}
+
+const FORM_DEFS={
+  train:{label:'高铁票',fields:[{k:'trainNumber',l:'车次'},{k:'departureStation',l:'出发站'},{k:'arrivalStation',l:'到达站'},{k:'departureTime',l:'出发时间'},{k:'seat',l:'座位'},{k:'passenger',l:'乘车人'},{k:'amount',l:'金额 (¥)'}]},
+  flight:{label:'飞机票',fields:[{k:'flightNumber',l:'航班号'},{k:'departureCity',l:'出发城市'},{k:'arrivalCity',l:'到达城市'},{k:'flightDate',l:'飞行日期'},{k:'amount',l:'金额 (¥)'}]},
+  hotel:{label:'酒店住宿',fields:[{k:'hotelName',l:'酒店名称'},{k:'checkInDate',l:'入住日期'},{k:'checkOutDate',l:'退房日期'},{k:'nights',l:'晚数'},{k:'amount',l:'金额 (¥)'}]},
+  car:{label:'市内用车',fields:[{k:'carDate',l:'用车日期'},{k:'mileage',l:'里程(km)'},{k:'amount',l:'金额 (¥)'}]},
+  carRound:{label:'往返交通',fields:[{k:'carDate',l:'用车日期'},{k:'mileage',l:'里程(km)'},{k:'amount',l:'金额 (¥)'}]},
+  invoice:{label:'发票',fields:[{k:'invoiceCode',l:'发票代码'},{k:'invoiceNumber',l:'发票号码'},{k:'issueDate',l:'开票日期'},{k:'amount',l:'金额 (¥)'}]}
+};
+
+function showAddRecordForm(type){
+  const def=FORM_DEFS[type];if(!def)return;
+  const area=document.getElementById('addRecordFormArea');
+  const defs={trainNumber:'G',departureStation:'北京',arrivalStation:'上海',departureTime:'2026-07-28 08:30',seat:'二等座 03车05A',passenger:'张三',amount:'577.50',flightNumber:'MU5101',departureCity:'北京',arrivalCity:'上海',flightDate:'2026-07-20',hotelName:'酒店',checkInDate:'2026-07-20',checkOutDate:'2026-07-22',nights:'2',carDate:'2026-07-21',mileage:'0',invoiceCode:'3100234567',invoiceNumber:'98765432',issueDate:'2026-07-15'};
+  let h='<div class="card" style="margin-bottom:0"><div class="card-title" style="margin-bottom:8px">填写'+def.label+'信息</div>';
+  for(const f of def.fields)h+='<div class="form-group"><label>'+f.l+'</label><input id="af_'+f.k+'" value="'+(defs[f.k]||'')+'"'+(f.k==='amount'||f.k==='mileage'||f.k==='nights'?' type="number" step="0.01"':'')+'></div>';
+  h+='<button class="btn btn-primary" style="width:100%;padding:10px" onclick="confirmAddRecord(\''+type+'\')">确认添加</button></div>';
+  area.innerHTML=h;
+}
+
+function confirmAddRecord(type){
+  const def=FORM_DEFS[type];if(!def)return;
+  const vals={};for(const f of def.fields)vals[f.k]=document.getElementById('af_'+f.k)?.value||'';
+  const amount=parseFloat(vals.amount)||0;
+  const isCR=type==='carRound';
+  const c=getCurrentClaim();
+  if(!c){showToast('请先创建报销单');closeAddRecordModal();return}
+  c.records.push(mkRec({type:isCR?'car':type,amount,...vals,isRoundTrip:isCR}));
+  closeAddRecordModal();showToast('已添加'+def.label+'：'+fmt(amount));renderCurrentClaim();
+}
+
+// === Record Detail View ===
+function showRecordDetail(idx){
+  const c=getCurrentClaim();if(!c||!c.records[idx])return;
+  const r=c.records[idx];
+  let h='';
+  if(r.type==='train'){
+    h='<div class="claim-header-card" style="background:linear-gradient(135deg,#ff9800,#f57c00)"><div style="font-size:28px;font-weight:700">'+r.trainNumber+'</div><div style="display:flex;justify-content:space-between;margin-top:12px"><div><div style="font-size:20px;font-weight:600">'+r.departureStation+'</div><div style="font-size:12px;opacity:.8">'+r.departureTime+'</div></div><div style="display:flex;flex-direction:column;align-items:center"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#fff" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div><div style="text-align:right"><div style="font-size:20px;font-weight:600">'+r.arrivalStation+'</div><div style="font-size:12px;opacity:.8">到达</div></div></div></div>';
+    h+='<div class="card"><div class="card-title">详细信息</div>'+detailRow('车次',r.trainNumber)+detailRow('出发站',r.departureStation)+detailRow('到达站',r.arrivalStation)+detailRow('出发时间',r.departureTime)+detailRow('座位',r.seat)+detailRow('乘车人',r.passenger)+detailRow('票价',fmt(r.amount))+'</div>';
+  } else if(r.type==='flight'){
+    h='<div class="claim-header-card" style="background:linear-gradient(135deg,#2196f3,#1565c0)"><div style="font-size:28px;font-weight:700">'+r.flightNumber+'</div><div style="display:flex;justify-content:space-between;margin-top:12px"><div><div style="font-size:20px;font-weight:600">'+r.departureCity+'</div><div style="font-size:12px;opacity:.8">'+r.flightDate+'</div></div><div style="display:flex;flex-direction:column;align-items:center"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#fff" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg></div><div style="text-align:right"><div style="font-size:20px;font-weight:600">'+r.arrivalCity+'</div><div style="font-size:12px;opacity:.8">到达</div></div></div></div>';
+    h+='<div class="card"><div class="card-title">详细信息</div>'+detailRow('航班号',r.flightNumber)+detailRow('出发城市',r.departureCity)+detailRow('到达城市',r.arrivalCity)+detailRow('飞行日期',r.flightDate)+detailRow('票价',fmt(r.amount))+'</div>';
+  } else if(r.type==='hotel'){
+    h='<div class="claim-header-card" style="background:linear-gradient(135deg,#9c27b0,#7b1fa2)"><div style="font-size:22px;font-weight:700">'+r.hotelName+'</div><div style="margin-top:10px;font-size:14px;opacity:.9">'+r.checkInDate+' ~ '+r.checkOutDate+' · '+r.nights+'晚</div><div class="big-total">'+fmt(r.amount)+' <small>住宿费</small></div></div>';
+    h+='<div class="card"><div class="card-title">详细信息</div>'+detailRow('酒店名称',r.hotelName)+detailRow('入住日期',r.checkInDate)+detailRow('退房日期',r.checkOutDate)+detailRow('晚数',r.nights+'晚')+detailRow('金额',fmt(r.amount))+'</div>';
+  } else if(r.type==='car'){
+    const label=r.isRoundTrip?'往返交通':'市内用车';
+    h='<div class="claim-header-card" style="background:linear-gradient(135deg,#4caf50,#388e3c)"><div style="font-size:22px;font-weight:700">'+label+'</div><div style="margin-top:10px;font-size:14px;opacity:.9">'+r.carDate+'</div><div class="big-total">'+fmt(r.amount)+' <small>费用</small></div></div>';
+    h+='<div class="card"><div class="card-title">详细信息</div>'+detailRow('类型',label)+detailRow('日期',r.carDate)+detailRow('里程',r.mileage+' km')+detailRow('金额',fmt(r.amount))+'</div>';
+  } else {
+    h='<div class="claim-header-card" style="background:linear-gradient(135deg,#ffc107,#f57f17);color:#1a1a1a"><div style="font-size:22px;font-weight:700">发票 #'+(r.invoiceNumber||r.invoiceCode)+'</div><div style="margin-top:10px;font-size:14px;opacity:.8">'+r.issueDate+'</div><div class="big-total">'+fmt(r.amount)+' <small>金额</small></div></div>';
+    h+='<div class="card"><div class="card-title">详细信息</div>'+detailRow('发票代码',r.invoiceCode)+detailRow('发票号码',r.invoiceNumber)+detailRow('开票日期',r.issueDate)+detailRow('金额',fmt(r.amount))+'</div>';
+  }
+  h+='<div style="display:flex;gap:8px"><button class="btn btn-danger btn-sm" style="flex:1;padding:12px" onclick="deleteRecord(\''+idx+'\')">删除此记录</button></div>';
+  document.getElementById('recordDetailContent').innerHTML=h;
+  navigateTo('page-record-detail');
+}
+function detailRow(l,v){return '<div class="detail-row" style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;border-bottom:1px solid #eee"><span style="color:#999">'+l+'</span><span style="font-weight:500;color:#1a1a1a">'+(v||'—')+'</span></div>'}
+function deleteRecord(idx){
+  const c=getCurrentClaim();if(!c||!c.records[idx])return;
+  c.records.splice(idx,1);showToast('已删除');navigateTo('page-claim');
+}
+
+// === Scan ===
+function simulateScan(){
+  document.getElementById('scanResultOverlay').classList.add('show');
+  const p=document.getElementById('scannerPlaceholder');
+  p.innerHTML='<div style="color:#4caf50;display:flex;flex-direction:column;align-items:center"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#4caf50" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><p style="margin-top:8px;opacity:1">识别成功</p></div>';
+}
+function closeScanResult(){
+  document.getElementById('scanResultOverlay').classList.remove('show');
+  document.getElementById('scannerPlaceholder').innerHTML='<div class="scan-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="6" y="8" width="12" height="8" rx="1.5" stroke-width="2"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg></div><p>摄像头已就绪</p>';
+}
+function saveScanToClaim(){
+  let c=getCurrentClaim();
+  if(!c){c=new Claim({id:DB.nextClaimId++,name:'扫码报销 '+new Date().toISOString().slice(0,10),startDate:new Date().toISOString().slice(0,10),endDate:new Date().toISOString().slice(0,10),days:1,subsidyRate:100,advance:0,remark:''});DB.claims.push(c);DB.currentClaimId=c.id;}
+  c.records.push(mkRec({type:'invoice',amount:577.50,invoiceCode:'3100234567',invoiceNumber:'98765432',issueDate:'2026-07-15'}));
+  closeScanResult();showToast('已加入报销单「'+c.name+'」');
+}
+
+// === Upload & Recognize ===
+function simulateUpload(){
+  document.getElementById('uploadArea').style.display='none';
+  document.getElementById('previewArea').style.display='block';
+  document.getElementById('recognizingState').classList.add('show');
+  setTimeout(()=>{
+    document.getElementById('recognizingState').classList.remove('show');
+    document.getElementById('recognitionResult').style.display='block';
+    document.getElementById('recogType').textContent='G1234 北京西→西安北';
+    document.getElementById('recogFields').innerHTML=
+      '<div class="result-field" style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid #eee"><span style="color:#999">车次</span><span style="font-weight:500">G1234</span></div>'
+      +'<div class="result-field" style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid #eee"><span style="color:#999">出发站</span><span style="font-weight:500">北京西</span></div>'
+      +'<div class="result-field" style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid #eee"><span style="color:#999">到达站</span><span style="font-weight:500">西安北</span></div>'
+      +'<div class="result-field" style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid #eee"><span style="color:#999">出发日期</span><span style="font-weight:500">2026-07-28</span></div>'
+      +'<div class="result-field" style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid #eee"><span style="color:#999">座位</span><span style="font-weight:500">二等座 03车05A</span></div>'
+      +'<div class="result-field" style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px"><span style="color:#999">票价</span><span style="font-weight:600;color:#f5576c">¥ 577.50</span></div>';
+  },1500);
+}
+function resetUpload(){
+  document.getElementById('uploadArea').style.display='block';
+  document.getElementById('previewArea').style.display='none';
+  document.getElementById('recognitionResult').style.display='none';
+  document.getElementById('recognizingState').classList.remove('show');
+}
+function saveRecogToClaim(){
+  let c=getCurrentClaim();
+  if(!c){c=new Claim({id:DB.nextClaimId++,name:'出差报销 '+new Date().toISOString().slice(0,10),startDate:new Date().toISOString().slice(0,10),endDate:new Date().toISOString().slice(0,10),days:1,subsidyRate:100,advance:0,remark:''});DB.claims.push(c);DB.currentClaimId=c.id;}
+  c.records.push(mkRec({type:'train',amount:577.50,trainNumber:'G1234',departureStation:'北京西',arrivalStation:'西安北',departureTime:'2026-07-28 08:30',passenger:'张三',seat:'二等座 03车05A'}));
+  resetUpload();showToast('车票已加入报销单「'+c.name+'」');
+}
+
+// === Init ===
+renderHome();
+</script>
+</body>
+</html>
