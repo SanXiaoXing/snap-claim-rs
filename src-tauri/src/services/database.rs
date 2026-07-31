@@ -105,7 +105,9 @@ impl Database {
             ",
         )?;
 
-        Ok(Database { conn: Mutex::new(conn) })
+        Ok(Database {
+            conn: Mutex::new(conn),
+        })
     }
 
     /// 保存历史记录（事务写入主表 + 明细表）
@@ -206,18 +208,26 @@ impl Database {
         )?;
 
         // 先收集所有行数据，释放 stmt 的借用
-        let rows_data = stmt
-            .query_map([], |row| {
-                let id: i64 = row.get(0)?;
-                let name: String = row.get(1)?;
-                let created_at: String = row.get(2)?;
-                let start_date: Option<String> = row.get(3)?;
-                let end_date: Option<String> = row.get(4)?;
-                let days: u32 = row.get::<_, i32>(5)? as u32;
-                let totals_json: String = row.get(6)?;
-                let remark: Option<String> = row.get(7)?;
-                Ok((id, name, created_at, start_date, end_date, days, totals_json, remark))
-            })?;
+        let rows_data = stmt.query_map([], |row| {
+            let id: i64 = row.get(0)?;
+            let name: String = row.get(1)?;
+            let created_at: String = row.get(2)?;
+            let start_date: Option<String> = row.get(3)?;
+            let end_date: Option<String> = row.get(4)?;
+            let days: u32 = row.get::<_, i32>(5)? as u32;
+            let totals_json: String = row.get(6)?;
+            let remark: Option<String> = row.get(7)?;
+            Ok((
+                id,
+                name,
+                created_at,
+                start_date,
+                end_date,
+                days,
+                totals_json,
+                remark,
+            ))
+        })?;
         let rows_data: Vec<_> = rows_data.collect::<Result<Vec<_>, _>>()?;
         // stmt 在此 drop
 
@@ -286,15 +296,16 @@ impl Database {
         let preview_rows: Vec<PreviewRow> = serde_json::from_str(&preview_rows_json)?;
 
         // 查明细
-        let mut stmt = conn
-            .prepare("SELECT type, amount, qr_amount, filename, full_path, page_number,
+        let mut stmt = conn.prepare(
+            "SELECT type, amount, qr_amount, filename, full_path, page_number,
                 train_number, departure_station, arrival_station, departure_time,
                 hotel_name, check_in_date, check_out_date, nights,
                 car_date, mileage,
                 flight_number, departure_city, arrival_city, flight_date,
                 invoice_code, invoice_number, issue_date,
                 is_round_trip
-             FROM history_items WHERE record_id = ?1 ORDER BY id")?;
+             FROM history_items WHERE record_id = ?1 ORDER BY id",
+        )?;
 
         let records: Vec<InvoiceRecord> = stmt
             .query_map(params![id], |row| {
@@ -345,10 +356,7 @@ impl Database {
     /// 删除指定历史记录（级联删明细，DELETE CASCADE 自动处理）
     pub fn delete_history(&self, id: i64) -> Result<(), crate::error::AppError> {
         let conn = self.conn.lock().unwrap();
-        let affected = conn.execute(
-            "DELETE FROM history_records WHERE id = ?1",
-            params![id],
-        )?;
+        let affected = conn.execute("DELETE FROM history_records WHERE id = ?1", params![id])?;
         if affected == 0 {
             return Err(crate::error::AppError::Database(format!(
                 "记录 ID {} 不存在",
@@ -416,11 +424,7 @@ fn days_to_date(days: u64) -> (u64, u32, u32) {
     const MONTH_DAYS: &[u32] = &[31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
     let mut m = 1u32;
     for &md in MONTH_DAYS {
-        let dim = if m == 2 && is_leap(y) {
-            md + 1
-        } else {
-            md
-        };
+        let dim = if m == 2 && is_leap(y) { md + 1 } else { md };
         if (remaining as u32) < dim {
             break;
         }

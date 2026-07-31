@@ -1,5 +1,5 @@
 pub mod database;
-pub mod expense_calculator;
 pub mod excel_service;
+pub mod expense_calculator;
 pub mod pdf_service;
 pub mod recognition_service;

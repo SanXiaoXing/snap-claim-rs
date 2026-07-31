@@ -20,7 +20,9 @@ fn init_pdfium() -> Result<Pdfium, AppError> {
         .collect();
 
     for dir in &paths {
-        if let Ok(binder) = Pdfium::bind_to_library(Pdfium::pdfium_platform_library_name_at_path(dir)) {
+        if let Ok(binder) =
+            Pdfium::bind_to_library(Pdfium::pdfium_platform_library_name_at_path(dir))
+        {
             return Ok(Pdfium::new(binder));
         }
     }
@@ -58,7 +60,10 @@ pub fn merge_pdfs(paths: &[String], output: &str) -> Result<(), AppError> {
 pub fn extract_text_by_page(path: &str) -> Result<Vec<(u32, String)>, AppError> {
     let path = Path::new(path);
     if !path.exists() {
-        return Err(AppError::PdfParse(format!("文件不存在: {}", path.display())));
+        return Err(AppError::PdfParse(format!(
+            "文件不存在: {}",
+            path.display()
+        )));
     }
 
     let pdfium = init_pdfium()?;
@@ -123,7 +128,10 @@ fn scan_page_for_qr(page: &PdfPage, page_num: u32) -> Vec<String> {
 
                 match scan_qr_from_rgba(&rgba, w, h) {
                     Ok(qr) if !qr.is_empty() => {
-                        tracing::info!("第 {page_num} 页在 {width}px 宽度下找到 {len} 个二维码", len = qr.len());
+                        tracing::info!(
+                            "第 {page_num} 页在 {width}px 宽度下找到 {len} 个二维码",
+                            len = qr.len()
+                        );
                         return qr;
                     }
                     _ => continue,
@@ -140,12 +148,11 @@ fn scan_page_for_qr(page: &PdfPage, page_num: u32) -> Vec<String> {
 
 /// 从 RGBA 字节数组中扫描二维码（转为灰度图提高检出率）
 fn scan_qr_from_rgba(rgba: &[u8], width: u32, height: u32) -> Result<Vec<String>, String> {
-    use rxing::{
-        common::HybridBinarizer,
-        BarcodeFormat, DecodingHintDictionary, MultiFormatReader, Reader,
-    };
     use rxing::BinaryBitmap;
     use rxing::Luma8LuminanceSource;
+    use rxing::{
+        common::HybridBinarizer, BarcodeFormat, DecodingHintDictionary, MultiFormatReader, Reader,
+    };
     use std::collections::HashSet;
 
     // RGBA → 灰度 (Luma8)，取 R 通道近似（QR 码通常是黑白的）

@@ -5,12 +5,12 @@ mod models;
 mod services;
 mod utils;
 
-use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
-use tauri::Emitter;
-use tauri::Manager;
 use commands::update::PendingDownload;
 use services::database::Database;
 use std::sync::Mutex;
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
+use tauri::Emitter;
+use tauri::Manager;
 
 /// 从命令行参数中提取文件路径（PDF + 图片），emit 给前端
 fn emit_file_args(app: &tauri::AppHandle, args: &[String]) {
@@ -44,6 +44,7 @@ pub fn run() {
     let args: Vec<String> = std::env::args().collect();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
@@ -98,7 +99,13 @@ pub fn run() {
                 true,
                 &[
                     &MenuItem::with_id(app, "file_merge", "合并 PDF", true, Some("CmdOrCtrl+M"))?,
-                    &MenuItem::with_id(app, "file_export", "导出报销单", true, Some("CmdOrCtrl+E"))?,
+                    &MenuItem::with_id(
+                        app,
+                        "file_export",
+                        "导出报销单",
+                        true,
+                        Some("CmdOrCtrl+E"),
+                    )?,
                 ],
             )?;
 
@@ -107,11 +114,35 @@ pub fn run() {
                 "主题",
                 true,
                 &[
-                    &MenuItem::with_id(app, "theme_Clean Office", "Clean Office", true, None::<&str>)?,
-                    &MenuItem::with_id(app, "theme_High Contrast", "High Contrast", true, None::<&str>)?,
+                    &MenuItem::with_id(
+                        app,
+                        "theme_Clean Office",
+                        "Clean Office",
+                        true,
+                        None::<&str>,
+                    )?,
+                    &MenuItem::with_id(
+                        app,
+                        "theme_High Contrast",
+                        "High Contrast",
+                        true,
+                        None::<&str>,
+                    )?,
                     &MenuItem::with_id(app, "theme_Dark Pro", "Dark Pro", true, None::<&str>)?,
-                    &MenuItem::with_id(app, "theme_Soft Minimal", "Soft Minimal", true, None::<&str>)?,
-                    &MenuItem::with_id(app, "theme_Corporate Trust", "Corporate Trust", true, None::<&str>)?,
+                    &MenuItem::with_id(
+                        app,
+                        "theme_Soft Minimal",
+                        "Soft Minimal",
+                        true,
+                        None::<&str>,
+                    )?,
+                    &MenuItem::with_id(
+                        app,
+                        "theme_Corporate Trust",
+                        "Corporate Trust",
+                        true,
+                        None::<&str>,
+                    )?,
                 ],
             )?;
 
@@ -120,7 +151,13 @@ pub fn run() {
                 "帮助",
                 true,
                 &[
-                    &MenuItem::with_id(app, "help_check_update", "检查更新...", true, None::<&str>)?,
+                    &MenuItem::with_id(
+                        app,
+                        "help_check_update",
+                        "检查更新...",
+                        true,
+                        None::<&str>,
+                    )?,
                     &PredefinedMenuItem::separator(app)?,
                     &about,
                 ],

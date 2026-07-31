@@ -40,7 +40,9 @@ pub async fn check_for_update(
     app: AppHandle,
     pending: State<'_, PendingDownload>,
 ) -> Result<Option<UpdateInfo>, AppError> {
-    let updater = app.updater().map_err(|e| AppError::Updater(e.to_string()))?;
+    let updater = app
+        .updater()
+        .map_err(|e| AppError::Updater(e.to_string()))?;
     let update = updater
         .check()
         .await

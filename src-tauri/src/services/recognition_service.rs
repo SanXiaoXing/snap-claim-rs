@@ -102,10 +102,7 @@ pub fn extract_fields(
                 if let Some(caps) = re.captures(text) {
                     if field_name == "departure_time" && caps.len() == 5 {
                         // 特殊处理：2024年01月15日 08:30开 → 2024-01-15 08:30
-                        let val = format!(
-                            "{}-{}-{} {}",
-                            &caps[1], &caps[2], &caps[3], &caps[4]
-                        );
+                        let val = format!("{}-{}-{} {}", &caps[1], &caps[2], &caps[3], &caps[4]);
                         result.insert(field_name.clone(), json!(val));
                     } else if field_name == "departure_time" && caps.len() == 4 {
                         // 3 组格式：2026年05月25日 → 2026-05-25（新式铁路电子客票，
@@ -224,7 +221,10 @@ pub fn build_invoice_record(
             .get("check_out_date")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string()),
-        nights: fields.get("nights").and_then(|v| v.as_u64()).map(|n| n as u32),
+        nights: fields
+            .get("nights")
+            .and_then(|v| v.as_u64())
+            .map(|n| n as u32),
         car_date: fields
             .get("car_date")
             .and_then(|v| v.as_str())
@@ -392,10 +392,7 @@ fn extract_train_stations_legacy(text: &str) -> Option<(String, String, String)>
         // 出发站：车次行的前一行，需要包含"站"字
         let departure = if i > 0 {
             let prev = lines[i - 1];
-            if prev.contains('站')
-                && prev.chars().count() <= 12
-                && !looks_like_non_station(prev)
-            {
+            if prev.contains('站') && prev.chars().count() <= 12 && !looks_like_non_station(prev) {
                 Some(prev.to_string())
             } else {
                 None
@@ -407,10 +404,7 @@ fn extract_train_stations_legacy(text: &str) -> Option<(String, String, String)>
         // 到达站：车次行的后一行，需要包含"站"字
         let arrival = if i + 1 < lines.len() {
             let next = lines[i + 1];
-            if next.contains('站')
-                && next.chars().count() <= 12
-                && !looks_like_non_station(next)
-            {
+            if next.contains('站') && next.chars().count() <= 12 && !looks_like_non_station(next) {
                 Some(next.to_string())
             } else {
                 None
@@ -435,8 +429,20 @@ fn extract_train_stations_legacy(text: &str) -> Option<(String, String, String)>
 /// "购买方名称:XX站段公司"），避免被误识别为出发/到达站。
 fn looks_like_non_station(s: &str) -> bool {
     [
-        "公司", "集团", "单位", "发票", "报销", "购买", "销售", "开票", "车次", "日期", "票号",
-        "增值税", "税务", "信用代码",
+        "公司",
+        "集团",
+        "单位",
+        "发票",
+        "报销",
+        "购买",
+        "销售",
+        "开票",
+        "车次",
+        "日期",
+        "票号",
+        "增值税",
+        "税务",
+        "信用代码",
     ]
     .iter()
     .any(|k| s.contains(k))

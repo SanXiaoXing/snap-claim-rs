@@ -34,10 +34,7 @@ pub async fn get_history_list(db: State<'_, Database>) -> Result<Vec<HistorySumm
 
 /// 获取单条历史记录完整详情
 #[tauri::command]
-pub async fn get_history_detail(
-    db: State<'_, Database>,
-    id: i64,
-) -> Result<HistoryDetail, String> {
+pub async fn get_history_detail(db: State<'_, Database>, id: i64) -> Result<HistoryDetail, String> {
     db.get_history_detail(id).map_err(|e| e.to_string())
 }
 

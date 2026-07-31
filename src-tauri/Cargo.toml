@@ -29,3 +29,6 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 pdfium-render = "0.8"
 rxing = "0.5"
 rust_xlsxwriter = "0.96"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-window-state = "2"

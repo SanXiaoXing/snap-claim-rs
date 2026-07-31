@@ -48,9 +48,7 @@ pub async fn recognize_invoices(
         let qr_flat: Vec<serde_json::Value> = qr_codes_by_page
             .iter()
             .filter(|(_, codes)| !codes.is_empty())
-            .map(|(p, codes)| {
-                serde_json::json!({ "page": p, "urls": codes, "filename": filename })
-            })
+            .map(|(p, codes)| serde_json::json!({ "page": p, "urls": codes, "filename": filename }))
             .collect();
         if !qr_flat.is_empty() {
             let _ = window.emit("recognition://qrcode", serde_json::json!(qr_flat));
@@ -140,12 +138,8 @@ pub fn recognize_from_text(
         );
     }
 
-    let (invoice_type, from_qr) = recognition_service::detect_invoice_type(
-        &text,
-        &qr_codes,
-        &rules,
-        image_hint.as_ref(),
-    );
+    let (invoice_type, from_qr) =
+        recognition_service::detect_invoice_type(&text, &qr_codes, &rules, image_hint.as_ref());
     let fields = recognition_service::extract_fields(
         &text,
         &invoice_type,
@@ -179,6 +173,5 @@ pub fn recognize_from_text(
 /// ponytail: 不引入 tauri-plugin-fs，单命令够用。Vec<u8> 经 Tauri 序列化为 number[]。
 #[command]
 pub fn read_image_bytes(path: String) -> Result<Vec<u8>, AppError> {
-    std::fs::read(&path)
-        .map_err(|e| AppError::PdfParse(format!("读取图片失败: {e}")))
+    std::fs::read(&path).map_err(|e| AppError::PdfParse(format!("读取图片失败: {e}")))
 }
