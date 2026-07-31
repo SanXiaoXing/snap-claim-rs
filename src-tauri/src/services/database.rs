@@ -379,62 +379,8 @@ fn get_db_path() -> Result<String, crate::error::AppError> {
     Ok(db_path.to_string_lossy().to_string())
 }
 
-/// 当前时间的 ISO8601 格式字符串
+/// 当前时间的 "YYYY-MM-DD HH:MM:SS" 字符串
+// ponytail: chrono 已在依赖树（tauri 传递依赖），一行顶掉手写历法换算
 fn chrono_now() -> String {
-    // 用 std 时间手动格式化，避免引入 chrono
-    let dur = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default();
-    let secs = dur.as_secs();
-    // 从 1970-01-01 计算年月日时分秒
-    let (year, month, day, hour, min, sec) = timestamp_to_ymdhms(secs);
-    format!(
-        "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
-        year, month, day, hour, min, sec
-    )
-}
-
-fn timestamp_to_ymdhms(secs: u64) -> (u64, u64, u64, u64, u64, u64) {
-    // 简单的公历计算（不考虑闰秒，只考虑闰年）
-    const SECS_PER_DAY: u64 = 86400;
-    let days = secs / SECS_PER_DAY;
-    let time_secs = secs % SECS_PER_DAY;
-    let hour = time_secs / 3600;
-    let min = (time_secs % 3600) / 60;
-    let sec = time_secs % 60;
-
-    let (year, month, day) = days_to_date(days);
-    (year, month as u64, day as u64, hour, min, sec)
-}
-
-fn days_to_date(days: u64) -> (u64, u32, u32) {
-    // 从 1970-01-01 开始
-    let mut y = 1970u64;
-    let mut remaining = days as i64;
-
-    loop {
-        let days_in_year = if is_leap(y) { 366 } else { 365 };
-        if remaining < days_in_year {
-            break;
-        }
-        remaining -= days_in_year;
-        y += 1;
-    }
-
-    const MONTH_DAYS: &[u32] = &[31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    let mut m = 1u32;
-    for &md in MONTH_DAYS {
-        let dim = if m == 2 && is_leap(y) { md + 1 } else { md };
-        if (remaining as u32) < dim {
-            break;
-        }
-        remaining -= dim as i64;
-        m += 1;
-    }
-    let d = (remaining as u32) + 1;
-    (y, m, d)
-}
-
-fn is_leap(year: u64) -> bool {
-    (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
+    chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
 }

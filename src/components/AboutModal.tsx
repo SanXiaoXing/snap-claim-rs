@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { getVersion } from '@tauri-apps/api/app'
 import { open } from '@tauri-apps/plugin-shell'
-import { gsap } from 'gsap'
 import VERSION_HISTORY from '../version-history.json'
+import { useGsapEnter } from '../lib/gsap-hooks'
 
 // ponytail: Tauri shell plugin 的 open() API 打开外部链接
 const openExternal = (url: string) => {
@@ -19,15 +19,8 @@ export function AboutModal({ open, onClose }: AboutModalProps) {
   const [version, setVersion] = useState('')
   const [showHistory, setShowHistory] = useState(false)
 
-  useEffect(() => {
-    if (open && contentRef.current) {
-      gsap.fromTo(
-        contentRef.current,
-        { opacity: 0, scale: 0.92, y: 16 },
-        { opacity: 1, scale: 1, y: 0, duration: 0.3, ease: 'back.out(1.4)' }
-      )
-    }
-  }, [open])
+  // ponytail: 弹窗常驻挂载（App 无条件渲染），open 变化时重放入场动画
+  useGsapEnter(contentRef, 0.92, open)
 
   // ponytail: 版本取自 tauri.conf.json（与 Cargo.toml 保持一致），用原生 API 避免硬编码漂移
   useEffect(() => {

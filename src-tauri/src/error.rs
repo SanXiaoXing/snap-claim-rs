@@ -43,3 +43,9 @@ impl From<rusqlite::Error> for AppError {
         Self::Database(e.to_string())
     }
 }
+
+impl From<rust_xlsxwriter::XlsxError> for AppError {
+    fn from(e: rust_xlsxwriter::XlsxError) -> Self {
+        Self::ExcelExport(e.to_string())
+    }
+}

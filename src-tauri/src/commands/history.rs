@@ -52,44 +52,6 @@ fn generate_name(start_date: Option<&str>, end_date: Option<&str>) -> String {
             let e = e.replace('-', "");
             format!("{}-{}", s, e)
         }
-        _ => {
-            // 用当前日期 YYYYMMDD
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default();
-            let secs = now.as_secs();
-            let days = secs / 86400;
-            let (y, m, d) = days_to_date(days);
-            format!("{:04}{:02}{:02}", y, m, d)
-        }
+        _ => chrono::Local::now().format("%Y%m%d").to_string(),
     }
-}
-
-fn days_to_date(days: u64) -> (u64, u32, u32) {
-    let mut y = 1970u64;
-    let mut remaining = days as i64;
-    loop {
-        let days_in_year = if is_leap(y) { 366 } else { 365 };
-        if remaining < days_in_year {
-            break;
-        }
-        remaining -= days_in_year;
-        y += 1;
-    }
-    const MONTH_DAYS: &[u32] = &[31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    let mut m = 1u32;
-    for &md in MONTH_DAYS {
-        let dim = if m == 2 && is_leap(y) { md + 1 } else { md };
-        if (remaining as u32) < dim {
-            break;
-        }
-        remaining -= dim as i64;
-        m += 1;
-    }
-    let d = (remaining as u32) + 1;
-    (y, m, d)
-}
-
-fn is_leap(year: u64) -> bool {
-    (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
 }

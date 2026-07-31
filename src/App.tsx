@@ -126,9 +126,6 @@ function App() {
             setProgress(cur)
             setProgressTotal(total)
           },
-          (_record) => {
-            // 增量推送仅做 UI 反馈，currentRecords 由 pdfResult.records 统一对齐
-          },
         )
         currentRecords = pdfResult.records
         setRecords(currentRecords)

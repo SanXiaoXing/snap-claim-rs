@@ -1,22 +1,12 @@
 "use client"
 
 import * as React from "react"
-import { gsap } from "gsap"
-import { useGSAP } from "@gsap/react"
 import { type DateRange } from "react-day-picker"
 import { zhCN } from "react-day-picker/locale"
 import { X } from "lucide-react"
 
 import { Calendar } from "./ui/calendar"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "./ui/card"
-
-gsap.registerPlugin(useGSAP)
+import { useModalTransition } from "../lib/gsap-hooks"
 
 function toISO(d: Date | undefined): string {
   if (!d) return ""
@@ -51,71 +41,8 @@ export function DateRangeModal({
     return f && t ? { from: f, to: t } : f ? { from: f } : undefined
   })
 
-  // 延迟卸载：open=false 后保留 DOM 至退场动画结束（240ms），再真正移除
-  const [mounted, setMounted] = React.useState(open)
-  React.useEffect(() => {
-    if (open) {
-      setMounted(true)
-    } else if (mounted) {
-      const t = setTimeout(() => setMounted(false), 240)
-      return () => clearTimeout(t)
-    }
-  }, [open, mounted])
-
-  // GSAP 进出场：遮罩淡入淡出 + 卡片 back.out 弹性入场 / expo.out 收缩退场
-  // 动机：状态切换 - 清晰表达"某事打开/关闭"，back.out 比 CSS 更有就位感
-  const overlayRef = React.useRef<HTMLDivElement>(null)
-  const cardRef = React.useRef<HTMLDivElement>(null)
-  useGSAP(
-    () => {
-      // 未挂载时 refs 为 null，跳过（GSAP 对 null 目标会告警）
-      if (!overlayRef.current || !cardRef.current) return
-      const mm = gsap.matchMedia()
-      mm.add(
-        {
-          normal: "(prefers-reduced-motion: no-preference)",
-          reduce: "(prefers-reduced-motion: reduce)",
-        },
-        (ctx) => {
-          const { reduce } = ctx.conditions!
-          if (open) {
-            // 进场
-            gsap.fromTo(
-              overlayRef.current,
-              { autoAlpha: 0 },
-              { autoAlpha: 1, duration: reduce ? 0 : 0.2, ease: "power2.out" },
-            )
-            gsap.fromTo(
-              cardRef.current,
-              { autoAlpha: 0, y: 16, scale: 0.96 },
-              {
-                autoAlpha: 1,
-                y: 0,
-                scale: 1,
-                duration: reduce ? 0 : 0.4,
-                ease: "back.out(1.5)",
-              },
-            )
-          } else {
-            // 退场
-            gsap.to(overlayRef.current, {
-              autoAlpha: 0,
-              duration: reduce ? 0 : 0.2,
-              ease: "expo.in",
-            })
-            gsap.to(cardRef.current, {
-              autoAlpha: 0,
-              y: 8,
-              scale: 0.98,
-              duration: reduce ? 0 : 0.22,
-              ease: "expo.in",
-            })
-          }
-        },
-      )
-    },
-    { dependencies: [open], scope: overlayRef },
-  )
+  // ponytail: 延迟卸载 + Esc 关闭 + GSAP 进出场统一走共享 hook（与 MergePdfModal 同款）
+  const { mounted, overlayRef, cardRef } = useModalTransition(open, onCancel)
 
   // ponytail: 每次打开同步外部值，避免上次未确认的选择残留
   React.useEffect(() => {
@@ -124,16 +51,6 @@ export function DateRangeModal({
     const t = fromISO(endDate)
     setRange(f && t ? { from: f, to: t } : f ? { from: f } : undefined)
   }, [open, startDate, endDate])
-
-  // Esc 关闭
-  React.useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCancel()
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [open, onCancel])
 
   if (!mounted) return null
 
@@ -161,9 +78,10 @@ export function DateRangeModal({
         onClick={onCancel}
       />
 
-      <Card
+      {/* ponytail: 原 ui/card 折叠至此（唯一调用方），样式原样内联 */}
+      <div
         ref={cardRef}
-        className="relative w-[680px] max-w-[92vw] mac-card"
+        className="rounded-lg border text-[var(--fg)] shadow-sm bg-[color-mix(in_srgb,var(--card)_88%,transparent)] relative w-[680px] max-w-[92vw] mac-card"
       >
         {/* 关闭按钮 */}
         <button
@@ -174,12 +92,12 @@ export function DateRangeModal({
           <X className="h-4 w-4" />
         </button>
 
-        <CardHeader className="relative border-b border-[var(--border)]">
-          <CardTitle>选择出差日期</CardTitle>
-          <CardDescription>在日历上拖选或点击起止日期</CardDescription>
-        </CardHeader>
+        <div className="flex flex-col space-y-1.5 p-4 relative border-b border-[var(--border)]">
+          <div className="font-semibold leading-none tracking-tight">选择出差日期</div>
+          <div className="text-sm text-[var(--fg-muted)]">在日历上拖选或点击起止日期</div>
+        </div>
 
-        <CardContent className="pt-4">
+        <div className="p-4">
           <Calendar
             mode="range"
             selected={range}
@@ -215,8 +133,8 @@ export function DateRangeModal({
               </button>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

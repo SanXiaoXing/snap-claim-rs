@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState, useMemo } from 'react'
-import { gsap } from 'gsap'
-import { useGSAP } from '@gsap/react'
+import { useEffect, useState, useMemo } from 'react'
 import { X, FileText, Check } from 'lucide-react'
+import { useModalTransition } from '../lib/gsap-hooks'
 
 /**
  * 合并 PDF 弹窗：点击文件按顺序选择，未被选中的文件不参与合并。
@@ -31,47 +30,8 @@ export function MergePdfModal({
     }
   }, [open, files])
 
-  // Esc 关闭
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, onCancel])
-
-  // 延迟卸载
-  const [mounted, setMounted] = useState(open)
-  useEffect(() => {
-    if (open) setMounted(true)
-    else if (mounted) {
-      const t = setTimeout(() => setMounted(false), 240)
-      return () => clearTimeout(t)
-    }
-  }, [open, mounted])
-
-  // GSAP 进出场
-  const overlayRef = useRef<HTMLDivElement>(null)
-  const cardRef = useRef<HTMLDivElement>(null)
-  useGSAP(() => {
-    if (!overlayRef.current || !cardRef.current) return
-    const mm = gsap.matchMedia()
-    mm.add(
-      {
-        normal: '(prefers-reduced-motion: no-preference)',
-        reduce: '(prefers-reduced-motion: reduce)',
-      },
-      (ctx) => {
-        const { reduce } = ctx.conditions!
-        if (open) {
-          gsap.fromTo(overlayRef.current, { autoAlpha: 0 }, { autoAlpha: 1, duration: reduce ? 0 : 0.2, ease: 'power2.out' })
-          gsap.fromTo(cardRef.current, { autoAlpha: 0, y: 16, scale: 0.96 }, { autoAlpha: 1, y: 0, scale: 1, duration: reduce ? 0 : 0.4, ease: 'back.out(1.5)' })
-        } else {
-          gsap.to(overlayRef.current, { autoAlpha: 0, duration: reduce ? 0 : 0.2, ease: 'expo.in' })
-          gsap.to(cardRef.current, { autoAlpha: 0, y: 8, scale: 0.98, duration: reduce ? 0 : 0.22, ease: 'expo.in' })
-        }
-      },
-    )
-  }, { dependencies: [open], scope: overlayRef })
+  // ponytail: 延迟卸载 + Esc 关闭 + GSAP 进出场统一走共享 hook（与 DateRangeModal 同款）
+  const { mounted, overlayRef, cardRef } = useModalTransition(open, onCancel)
 
   // 点击切换选中：已选中 → 取消（后续序号前移）；未选中 → 追加到末尾
   const handleToggle = (file: string) => {

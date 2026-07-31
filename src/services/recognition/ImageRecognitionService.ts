@@ -41,11 +41,6 @@ export class ImageRecognitionService {
     const records: InvoiceRecord[] = [];
     for (const seg of segments) {
       const imageHint = extractImageHint(seg);
-      if (imageHint) {
-        console.log(
-          `[image-ocr] 订单号=${imageHint.orderId} 类型=${imageHint.orderType} 金额=${imageHint.amount ?? "null"}`,
-        );
-      }
       const record = await this.parse(seg, file.name, fullPath, 1, imageHint);
       onRecord?.(record);
       records.push(record);

@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react"
+import { useRef } from "react"
 import { ArrowDownCircle } from "lucide-react"
-import { gsap } from "gsap"
 import type { UpdateInfo } from "../types"
+import { useGsapEnter } from "../lib/gsap-hooks"
 
 interface UpdateDialogProps {
   update: UpdateInfo
@@ -12,15 +12,7 @@ interface UpdateDialogProps {
 export function UpdateDialog({ update, onInstall, onLater }: UpdateDialogProps) {
   const cardRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (cardRef.current) {
-      gsap.fromTo(
-        cardRef.current,
-        { opacity: 0, scale: 0.92, y: 16 },
-        { opacity: 1, scale: 1, y: 0, duration: 0.3, ease: "back.out(1.4)" }
-      )
-    }
-  }, [])
+  useGsapEnter(cardRef, 0.92)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">

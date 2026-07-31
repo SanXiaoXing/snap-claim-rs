@@ -1,6 +1,6 @@
 import { X, Download, Check } from "lucide-react";
-import { useEffect, useRef } from "react";
-import { gsap } from "gsap";
+import { useRef } from "react";
+import { useGsapEnter } from "../lib/gsap-hooks";
 
 interface UpdateProgressWidgetProps {
   progress: { downloaded: number; total: number | null }
@@ -19,15 +19,7 @@ export function UpdateProgressWidget({ progress, ready, onInstall, onDismiss }: 
       ? Math.round((progress.downloaded / progress.total) * 100)
       : null
 
-  useEffect(() => {
-    if (widgetRef.current) {
-      gsap.fromTo(
-        widgetRef.current,
-        { opacity: 0, y: 16, scale: 0.96 },
-        { opacity: 1, y: 0, scale: 1, duration: 0.3, ease: "back.out(1.4)" }
-      )
-    }
-  }, [])
+  useGsapEnter(widgetRef)
 
   return (
     <div className="fixed bottom-5 right-5 z-50 flex flex-col items-center gap-2">

@@ -5,7 +5,10 @@ import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
 import { DayPicker } from "react-day-picker"
 
 import { cn } from "../../lib/utils"
-import { buttonVariants } from "./button-variants"
+
+// ponytail: 原 button-variants 折叠至此（唯一调用方），仅 outline/ghost 两个变体在用
+const BTN_BASE =
+  "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>
 
@@ -31,14 +34,12 @@ function Calendar({
         caption_label: "text-sm font-medium text-[var(--fg)]",
         nav: "flex items-center gap-1",
         button_previous: cn(
-          buttonVariants({ variant: "outline" }),
-          "size-9 p-0 absolute left-2 rounded-md bg-transparent",
-          "hover:bg-[color-mix(in_srgb,var(--accent)_12%,var(--card))]",
+          BTN_BASE,
+          "border border-[var(--border)] text-[var(--fg)] size-9 p-0 absolute left-2 rounded-md bg-transparent hover:bg-[color-mix(in_srgb,var(--accent)_12%,var(--card))]",
         ),
         button_next: cn(
-          buttonVariants({ variant: "outline" }),
-          "size-9 p-0 absolute right-2 rounded-md bg-transparent",
-          "hover:bg-[color-mix(in_srgb,var(--accent)_12%,var(--card))]",
+          BTN_BASE,
+          "border border-[var(--border)] text-[var(--fg)] size-9 p-0 absolute right-2 rounded-md bg-transparent hover:bg-[color-mix(in_srgb,var(--accent)_12%,var(--card))]",
         ),
         month_grid: "w-full border-collapse space-y-1",
         weekdays: "flex",
@@ -56,8 +57,8 @@ function Calendar({
           "[&:has([aria-selected].day-outside)]:text-[var(--fg-muted)]",
         ),
         day_button: cn(
-          buttonVariants({ variant: "ghost" }),
-          "size-9 p-0 font-normal aria-selected:opacity-100",
+          BTN_BASE,
+          "text-[var(--fg)] hover:bg-[color-mix(in_srgb,var(--accent)_12%,var(--card))] size-9 p-0 font-normal aria-selected:opacity-100",
         ),
         range_start: "day-range-start",
         range_end: "day-range-end",

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { getHistoryDetail } from '../../lib/tauri'
+import { PREVIEW_MAX_W } from '../Panels'
 import type { HistoryDetail } from '../../types'
 
 interface HistoryDetailViewProps {
@@ -147,12 +148,10 @@ export function HistoryDetailView({ id, onBack }: HistoryDetailViewProps) {
               <tbody>
                 {detail.previewRows.map((row, idx) => (
                   <tr key={idx}>
-                    {row.cells.map((cell, colIdx) => {
-                      const maxW = [140, 140, 120, 100, 100, 120, 120, 120, 100, 120]
-                      return (
+                    {row.cells.map((cell, colIdx) => (
                         <td
                           key={colIdx}
-                          style={{ maxWidth: `${maxW[colIdx] ?? 120}px` }}
+                          style={{ maxWidth: `${PREVIEW_MAX_W[colIdx]}px` }}
                           className={`px-2 py-1 whitespace-nowrap ${
                             typeof cell === 'number' ? 'text-right' : 'text-center overflow-hidden text-ellipsis'
                           } ${row.bold ? 'font-bold bg-[var(--accent-light)]' : ''}`}
@@ -161,8 +160,7 @@ export function HistoryDetailView({ id, onBack }: HistoryDetailViewProps) {
                             ? cell.toFixed(2)
                             : cell || ''}
                         </td>
-                      )
-                    })}
+                    ))}
                   </tr>
                 ))}
               </tbody>

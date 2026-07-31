@@ -13,7 +13,8 @@ const TYPE_MAP = {
 }
 
 // 报销单预览各列最大宽度（px），按列顺序：出发/到达/交通/飞机/住宿/市内/往返/补助/天数/合计
-const PREVIEW_MAX_W = [140, 140, 120, 100, 100, 120, 120, 120, 100, 120]
+// ponytail: HistoryDetailView 共用此常量，避免两处维护 10 列宽度
+export const PREVIEW_MAX_W = [140, 140, 120, 100, 100, 120, 120, 120, 100, 120]
 
 export function LeftPanel({
   files,

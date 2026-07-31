@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { useGSAP } from '@gsap/react'
 
@@ -149,4 +149,104 @@ export function useGsapRowStagger(
     },
     { dependencies: [rowCount], scope },
   )
+}
+
+/**
+ * 弹窗通用"延迟卸载 + Esc 关闭 + GSAP 进出场"（DateRangeModal / MergePdfModal 共用）。
+ * 遮罩淡入淡出 + 卡片 back.out 弹性入场 / expo.out 收缩退场，reduce-motion 下时长归零。
+ */
+export function useModalTransition(open: boolean, onCancel: () => void) {
+  const [mounted, setMounted] = useState(open)
+  const overlayRef = useRef<HTMLDivElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  // 延迟卸载：open=false 后保留 DOM 至退场动画结束（240ms），再真正移除
+  useEffect(() => {
+    if (open) {
+      setMounted(true)
+    } else if (mounted) {
+      const t = setTimeout(() => setMounted(false), 240)
+      return () => clearTimeout(t)
+    }
+  }, [open, mounted])
+
+  // Esc 关闭
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCancel()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onCancel])
+
+  useGSAP(
+    () => {
+      if (!overlayRef.current || !cardRef.current) return
+      const mm = gsap.matchMedia()
+      mm.add(
+        {
+          normal: '(prefers-reduced-motion: no-preference)',
+          reduce: '(prefers-reduced-motion: reduce)',
+        },
+        (ctx) => {
+          const { reduce } = ctx.conditions!
+          if (open) {
+            gsap.fromTo(
+              overlayRef.current,
+              { autoAlpha: 0 },
+              { autoAlpha: 1, duration: reduce ? 0 : 0.2, ease: 'power2.out' },
+            )
+            gsap.fromTo(
+              cardRef.current,
+              { autoAlpha: 0, y: 16, scale: 0.96 },
+              {
+                autoAlpha: 1,
+                y: 0,
+                scale: 1,
+                duration: reduce ? 0 : 0.4,
+                ease: 'back.out(1.5)',
+              },
+            )
+          } else {
+            gsap.to(overlayRef.current, {
+              autoAlpha: 0,
+              duration: reduce ? 0 : 0.2,
+              ease: 'expo.in',
+            })
+            gsap.to(cardRef.current, {
+              autoAlpha: 0,
+              y: 8,
+              scale: 0.98,
+              duration: reduce ? 0 : 0.22,
+              ease: 'expo.in',
+            })
+          }
+        },
+      )
+    },
+    { dependencies: [open], scope: overlayRef },
+  )
+
+  return { mounted, overlayRef, cardRef }
+}
+
+/**
+ * 一次性入场动画：挂载时弹性淡入（UpdateDialog / UpdateProgressWidget / AboutModal 共用）。
+ * active=false 时不播放——AboutModal 常驻挂载，需在 open 变化时重放。
+ */
+export function useGsapEnter(
+  ref: React.RefObject<HTMLElement | null>,
+  scale = 0.96,
+  active = true,
+) {
+  useEffect(() => {
+    if (active && ref.current) {
+      gsap.fromTo(
+        ref.current,
+        { opacity: 0, y: 16, scale },
+        { opacity: 1, y: 0, scale: 1, duration: 0.3, ease: 'back.out(1.4)' },
+      )
+    }
+  }, [ref, active, scale])
 }
