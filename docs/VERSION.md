@@ -1,7 +1,17 @@
 # SnapClaim 版本信息
 
 > 记录每个版本的功能规划、设计决策与变更说明。
-> 当前发布版本：**v1.4.0**
+> 当前发布版本：**v1.4.1**
+---
+
+## v1.4.1（已发布）
+
+### 窗口状态记忆
+
+- 集成 `tauri-plugin-window-state`（[src-tauri/src/lib.rs](src-tauri/src/lib.rs)），自动记忆并恢复窗口的位置、大小与最大化状态；
+- 前端同步引入 `@tauri-apps/plugin-window-state`（[package.json](package.json)）；
+- 首次启动无历史状态时，保持 tauri.conf.json 中的默认窗口尺寸（1200×800）。
+
 ---
 
 ## v1.1.0（已发布）
